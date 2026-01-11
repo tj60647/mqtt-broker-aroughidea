@@ -41,11 +41,18 @@ It is single-node, non-high availability, and intentionally simple.
         - **Name:** You can name it "mqtt-broker" (or your computer name) to keep track of it.
 6. **Finalize Details:**
    - **Hostname:** Change the long default name (e.g., `ubuntu-s-1vcpu...`) to something simple like `mqtt-broker`.
+     - *Note:* Look for a field labeled **Hostname** at the very bottom. By default, it will say something like `ubuntu-s-1vcpu-1gb-nyc1-01`. You can type `mqtt-broker` to make it easier to read in your dashboard. If you don't change it, the default name works fine too! It's just a label.
    - **IPv6:** Uncheck if enabled (not required for this broker).
    - Click **Create Droplet**.
 
 ## Step 2: Install Docker on the Droplet
-SSH into the droplet, then:
+1. **Find your IP Address:** Go to the DigitalOcean dashboard and copy the "ipv4" address of your new droplet (e.g., `203.0.113.10`).
+2. **Connect via SSH:**
+   - Open PowerShell on your computer.
+   - Run: `ssh root@<your_droplet_ip>` (Replace `<your_droplet_ip>` with the actual address).
+   - Type `yes` to confirm the connection if asked.
+3. **Run Installation Commands:**
+   Once you are logged in (you will see a prompt like `root@mqtt-broker:~#`), run these commands inside that SSH session:
 
 ```sh
 sudo apt update
