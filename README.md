@@ -50,28 +50,33 @@ It is single-node, non-high availability, and intentionally simple.
 2. **Connect via SSH:**
    - Open PowerShell on your computer.
    - Run: `ssh root@<your_droplet_ip>` (Replace `<your_droplet_ip>` with the actual address).
-   - Type `yes` to confirm the connection if asked.
+   - **First Time Warning:** You will see a message: *The authenticity of host... can't be established.*
+     - This is normal for a new server. Type `yes` and press Enter to continue.
 3. **Run Installation Commands:**
-   Once you are logged in (you will see a prompt like `root@mqtt-broker:~#`), run these commands inside that SSH session:
+   Once you are logged in (you will see a prompt like `root@mqtt-broker:~#`), run these commands inside that SSH session.
+   
+   **Block A: Update and Install Docker**
+   *(Paste this entire block first)*
+   ```sh
+   sudo apt update
+   sudo apt install -y ca-certificates curl gnupg
+   curl -fsSL https://get.docker.com | sudo sh
+   sudo usermod -aG docker $USER
+   newgrp docker
+   ```
 
-```sh
-sudo apt update
-sudo apt install -y ca-certificates curl gnupg
-curl -fsSL https://get.docker.com | sudo sh
-sudo usermod -aG docker $USER
-newgrp docker
-```
+   **Block B: Install Compose Plugin**
+   *(Run this next)*
+   ```sh
+   sudo apt install -y docker-compose-plugin
+   ```
 
-Install Docker Compose plugin:
-```sh
-sudo apt install -y docker-compose-plugin
-```
-
-Verify:
-```sh
-docker --version
-docker compose version
-```
+   **Block C: Verify Installation**
+   *(Run this last to check if it worked)*
+   ```sh
+   docker --version
+   docker compose version
+   ```
 
 ## Step 3: Clone the Repository
 ```sh
