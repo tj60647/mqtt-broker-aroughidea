@@ -77,10 +77,13 @@ It is single-node, non-high availability, and intentionally simple.
    docker --version
    docker compose version
    ```
+   **Expected Output:**
+   You should see version numbers for both commands (e.g., `Docker version 29.x.x` and `Docker Compose version v2.x.x`).
 
 ## Step 3: Clone the Repository
+Run this inside your SSH session (on the droplet):
 ```sh
-git clone https://github.com/<your-org>/mqtt-broker-aroughidea.git
+git clone https://github.com/tj60647/mqtt-broker-aroughidea.git
 cd mqtt-broker-aroughidea
 ```
 
@@ -95,11 +98,30 @@ Copy and edit ACLs:
 cp config/acl.example config/acl
 ```
 
-Create `config/mosquitto.conf` (Copilot can generate this from the instructions).
-Ensure it references:
-- `password_file /mosquitto/config/passwords`
-- `acl_file /mosquitto/config/acl`
-- TLS cert paths under `/mosquitto/config/certs`
+Create `config/mosquitto.conf` by running this command:
+
+```sh
+cat <<EOF > config/mosquitto.conf
+persistence true
+persistence_location /mosquitto/data/
+log_dest file /mosquitto/log/mosquitto.log
+
+# Standard MQTT (1883)
+listener 1883
+allow_anonymous false
+password_file /mosquitto/config/passwords
+acl_file /mosquitto/config/acl
+
+# MQTT over TLS (8883)
+listener 8883
+certfile /mosquitto/config/certs/server.crt
+keyfile /mosquitto/config/certs/server.key
+cafile /mosquitto/config/certs/ca.crt
+allow_anonymous false
+password_file /mosquitto/config/passwords
+acl_file /mosquitto/config/acl
+EOF
+```
 
 ## Step 6: Create User Passwords
 Use the official Mosquitto image to generate password hashes:
