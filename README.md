@@ -22,9 +22,23 @@ It is single-node, non-high availability, and intentionally simple.
 
 ## Step 1: Create a Droplet
 1. Create a new DigitalOcean Droplet
-2. Choose Ubuntu LTS
-3. Enable SSH access
-4. Select a basic size (1 vCPU / 1 GB RAM is sufficient)
+2. Choose Region: Choose the one closest to you (e.g. NYC1, SFO2)
+3. Choose Image: **Ubuntu 22.04 LTS x64**
+4. Choose Size:
+   - **Droplet Type:** Basic
+   - **CPU Options:** Regular (SSD)
+   - **Price:** $4/mo (512 MB / 1 CPU) or $6/mo (1 GB / 1 CPU) is plenty.
+5. **Authentication Method:** Choose **SSH Key**.
+   - *Need a key? (Windows)*:
+     1. Open PowerShell and run: `ssh-keygen -t ed25519 -C "mqtt-broker"`
+        - **Important:** When prompted for a file, just press **Enter** (defaults).
+        - **Passphrase:** Press **Enter** twice for no passphrase (easiest for automation/testing).
+        - `-t ed25519`: Creates a more secure, modern, and shorter key type than RSA.
+        - `-C "..."`: Adds a label so you can identify this key in the DigitalOcean dashboard.
+     2. Copy the public key: `Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub`
+        - The output will start with `ssh-ed25519` and end with `mqtt-broker`.
+     3. Click "Add SSH Key" in DigitalOcean and paste the output.
+        - **Name:** You can name it "mqtt-broker" (or your computer name) to keep track of it.
 5. Assign a static hostname or DNS name if desired
 
 ## Step 2: Install Docker on the Droplet
