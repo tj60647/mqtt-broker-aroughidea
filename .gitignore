@@ -1,0 +1,12 @@
+# Secrets
+config/passwords
+certs/*.key
+certs/*.crt
+
+# Runtime state
+data/
+log/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db

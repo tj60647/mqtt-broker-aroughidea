@@ -1,0 +1,13 @@
+# Example ACL file
+# Copy to acl and adjust per workshop or deployment
+
+# Per-user namespaces
+user alice
+topic readwrite workshop/alice/#
+
+user bob
+topic readwrite workshop/bob/#
+
+# Optional shared broadcast channel
+pattern read workshop/broadcast/#
+pattern write workshop/broadcast/#
