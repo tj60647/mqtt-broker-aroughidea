@@ -124,14 +124,18 @@ EOF
 ```
 
 ## Step 6: Create User Passwords
-Use the official Mosquitto image to generate password hashes:
+Use the official Mosquitto image to generate password hashes.
+*(Note: You can use a single shared username/password for everyone in a workshop)*
+
+Run this command to create a user named **`workshop-user`**:
 ```sh
 docker run --rm -it \
   -v "$PWD/config:/mosquitto/config" \
   eclipse-mosquitto:2 \
-  sh -lc 'mosquitto_passwd -c /mosquitto/config/passwords alice'
+  sh -lc 'mosquitto_passwd -c /mosquitto/config/passwords workshop-user'
 ```
-Repeat for each user.
+You will be prompted to type a password (e.g., `mqtt-fun-2026`).
+You can repeat this command (without the `-c` flag) to add more distinct users if needed.
 
 ## Step 7: Generate TLS Certificates
 Generate a private CA and server certificate per deployment.
