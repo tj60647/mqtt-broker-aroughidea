@@ -39,7 +39,10 @@ It is single-node, non-high availability, and intentionally simple.
         - The output will start with `ssh-ed25519` and end with `mqtt-broker`.
      3. Click "Add SSH Key" in DigitalOcean and paste the output.
         - **Name:** You can name it "mqtt-broker" (or your computer name) to keep track of it.
-5. Assign a static hostname or DNS name if desired
+6. **Finalize Details:**
+   - **Hostname:** Change the long default name (e.g., `ubuntu-s-1vcpu...`) to something simple like `mqtt-broker`.
+   - **IPv6:** Uncheck if enabled (not required for this broker).
+   - Click **Create Droplet**.
 
 ## Step 2: Install Docker on the Droplet
 SSH into the droplet, then:
