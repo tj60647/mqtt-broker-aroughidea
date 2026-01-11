@@ -8,7 +8,8 @@ This repository defines a portable MQTT broker using Eclipse Mosquitto, intended
 
 It is single-node, non-high availability, and intentionally simple.
 
-### Non-HA Definition
+### Architecture Definitions
+- **Single Node:** All components (broker, storage, networking) run on one virtual machine. There is no horizontal scaling.
 - **Single Point of Failure:** The broker runs on one node (server/container). If that node crashes or the server goes down, the entire MQTT service stops.
 - **No Redundancy:** There are no backup servers or clusters waiting to take over automatically.
 - **Simpler Architecture:** It avoids the complexity of distributed state, clustering protocols, and load balancers, favoring a simpler "easy to destroy and recreate" approach.
