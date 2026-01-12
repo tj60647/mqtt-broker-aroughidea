@@ -5,6 +5,9 @@ Files:
 - acl.example    : Example access control list (ACL)
 
 Notes:
-- Do not commit password files.
-- ACLs should be tailored per workshop or deployment.
-- Authentication and TLS are enforced by default.
+- `mosquitto.conf`: Main broker configuration. It references paths *inside* the container.
+- `acl`: Defines who can read/write which topics.
+- `passwords`: Created by `mosquitto_passwd` tool (not committed to git).
+
+For usage instructions, see the main [README.md](../README.md).
+

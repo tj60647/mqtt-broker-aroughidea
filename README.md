@@ -29,16 +29,17 @@ It is single-node, non-high availability, and intentionally simple.
    - **CPU Options:** Regular (SSD)
    - **Price:** $4/mo (512 MB / 1 CPU) or $6/mo (1 GB / 1 CPU) is plenty.
 5. **Authentication Method:** Choose **SSH Key**.
-   - *Need a key? (Windows)*:
-     1. Open PowerShell and run: `ssh-keygen -t ed25519 -C "mqtt-broker"`
+   - *Need a key?*:
+     1. Open a terminal (PowerShell on Windows, Terminal on Mac/Linux).
+     2. Run: `ssh-keygen -t ed25519 -C "mqtt-broker"`
         - **Important:** When prompted for a file, just press **Enter** (defaults).
         - **Passphrase:** Press **Enter** twice for no passphrase (easiest for automation/testing).
-        - `-t ed25519`: Creates a more secure, modern, and shorter key type than RSA.
-        - `-C "..."`: Adds a label so you can identify this key in the DigitalOcean dashboard.
-     2. Copy the public key: `Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub`
-        - The output will start with `ssh-ed25519` and end with `mqtt-broker`.
-     3. Click "Add SSH Key" in DigitalOcean and paste the output.
-        - **Name:** You can name it "mqtt-broker" (or your computer name) to keep track of it.
+     3. **Copy the Public Key:**
+        - **Windows (PowerShell):** `Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub`
+        - **Mac/Linux:** `cat ~/.ssh/id_ed25519.pub`
+     4. **Add to DigitalOcean:**
+        - Click "Add SSH Key" in DigitalOcean and paste the output.
+        - Name it "mqtt-broker".
 6. **Finalize Details:**
    - **Hostname:** Change the long default name (e.g., `ubuntu-s-1vcpu...`) to something simple like `mqtt-broker`.
      - *Note:* Look for a field labeled **Hostname** at the very bottom. By default, it will say something like `ubuntu-s-1vcpu-1gb-nyc1-01`. You can type `mqtt-broker` to make it easier to read in your dashboard. If you don't change it, the default name works fine too! It's just a label.
@@ -173,11 +174,41 @@ chmod +x scripts/test-connection.sh
 ./scripts/test-connection.sh
 ```
 
-## Step 9: Open Firewall Ports
-On the droplet firewall, allow:
-- `1883` (optional, non-TLS)
-- `8883` (TLS MQTT)
-- `9001` / `9443` (if using WebSockets)
+## Step 9: Configure Firewall (UFW)
+Ubuntu comes with a firewall called `ufw`. It is likely creating a "deny all" rule by default, so we need to open the MQTT ports.
+
+Run these commands on the droplet:
+```sh
+sudo ufw allow 1883/tcp comment 'MQTT plaintext'
+sudo ufw allow 8883/tcp comment 'MQTT TLS'
+sudo ufw allow 9001/tcp comment 'MQTT Websockets'
+# Ensure SSH is still allowed (it usually is, but good to be safe)
+sudo ufw allow ssh
+sudo ufw enable
+```
+
+## Step 10: Secure Client Connection (The "Loose End")
+To connect securely from your **local computer** (e.g., using MQTT Explorer), you need the **Certificate Authority (CA)** file we generated in Step 7. Without it, your computer won't trust the broker.
+
+### 1. Download the CA Certificate
+Run this command **on your local computer** (not the droplet):
+
+```sh
+# Replace with your actual droplet IP
+scp root@<YOUR_DROPLET_IP>:~/mqtt-broker-aroughidea/config/certs/ca.crt .
+```
+*This downloads `ca.crt` to your current folder.*
+
+### 2. Configure MQTT Explorer (or other clients)
+- **Host:** `<YOUR_DROPLET_IP>`
+- **Port:** `8883`
+- **Protocol:** `mqtts` (TLS)
+- **Username/Password:** `workshop-user` / `mqtt-fun-2026` (or whatever you set)
+- **TLS/certificates:**
+  - **CA Certificate:** Select the `ca.crt` file you just downloaded.
+  - **Client Certificate:** Leave blank.
+  - **Client Key:** Leave blank.
+  - **Uncheck** "Validate certificate" if you are having hostname issues, but providing the CA is usually enough.
 
 ## Migration / Reuse
 To move this broker to another host:
@@ -185,6 +216,11 @@ To move this broker to another host:
 2. Copy `data/` if persistence matters
 3. Regenerate certificates if hostname/IP changes
 4. Recreate passwords if desired
+
+## Troubleshooting
+- **Connection Refused?** Check if the container is running (`docker ps`) and if Firewall ports are open (`sudo ufw status`).
+- **Certificate Errors?** If your client complains about "Hostname mismatch" (because we used a simple self-signed cert), try disabling "Validate Server Certificate" in your client settings, OR regenerate the certs with the specific IP address in `scripts/generate-certs.sh`.
+- **Logs:** Run `docker logs -f mosquitto` to see why connections are being rejected (e.g., "invalid password").
 
 ## Final Guidance
 This repository should remain:

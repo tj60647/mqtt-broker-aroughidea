@@ -38,3 +38,7 @@ echo "------------------------------------------------"
 echo "Certificates created in $DIR:"
 ls -1 $DIR
 echo "------------------------------------------------"
+echo "IMPORTANT:"
+echo "You must download '$DIR/ca.crt' to your local machine"
+echo "to connect securely using MQTT Explorer or other clients."
+echo "------------------------------------------------"
