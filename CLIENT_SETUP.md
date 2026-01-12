@@ -26,15 +26,34 @@ docker compose up -d
 ```
 
 ### 4. Create an MQTT User
-Anonymous access is disabled by default for security. You need to create a username and password.
-Run the following command (replace `myuser` with your desired username):
+Anonymous access is disabled by default. You need to create a user. 
+For the default ACL and test scripts to work out-of-the-box, we recommend using the username `workshop-user`.
+
+Run the following command:
 
 ```bash
-docker compose exec mosquitto mosquitto_passwd -c /mosquitto/config/passwords myuser
+docker compose exec mosquitto mosquitto_passwd -c /mosquitto/config/passwords workshop-user
 ```
 
-*   You will be prompted to enter a password twice.
-*   **Remember these credentials.** You will need them for your script.
+*   You will be prompted to enter a password twice. 
+*   **Tip:** The included test script assumes the password is `mqtt-fun-2026`. Use that for simplicity, or remember to update the test script later if you choose your own.
+
+### 5. Verify Server Setup
+Before moving to the client code, verify that your ACLs and user are correctly configured.
+
+**A. Verify ACL File**
+Check that the ACL file was copied correctly:
+```bash
+ls -l config/acl
+```
+
+**B. Run the Test Script**
+We have included a script that runs a publisher and subscriber inside Docker to self-test the broker.
+```bash
+./scripts/test-connection.sh
+```
+*   If successfully configured, you will see: `✅ SUCCESS: Message received!`
+*   If it fails, check that your created user matches the one in `config/acl` and `scripts/test-connection.sh`.
 
 ---
 
