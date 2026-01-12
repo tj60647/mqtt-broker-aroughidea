@@ -7,7 +7,7 @@ This guide explains how to configure your DigitalOcean Mosquitto broker to accep
 Connect to your DigitalOcean droplet via SSH to perform these steps.
 
 ### 1. Prepare Configuration Files
-The broker needs an Access Control List (ACL) to define permissions. Run the following commands from the repository root:
+The broker needs an Access Control List (ACL) to define permissions. Run the following commands to get to the repository root:
 ```bash
 cd mqtt-broker-aroughidea
 cp config/acl.example config/acl
