@@ -14,7 +14,9 @@ cp config/acl.example config/acl
 ```
 
 ### 2. Generate Certificates
-Even if you plan to use unencrypted WebSockets for testing, the broker configuration (`mosquitto.conf`) requires certificate files to be present on start up. We can generate self-signed ones easily:
+The broker configuration (`mosquitto.conf`) enables a secure listener on port 8883 by default. Even if you only plan to use WebSockets (port 9001) for this test, Mosquitto will fail to start if the certificate files referenced in the config do not exist.
+
+We can generate a set of temporary, self-signed certificates to satisfy this requirement:
 ```bash
 ./scripts/generate-certs.sh
 ```
