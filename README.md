@@ -166,6 +166,13 @@ docker ps
 docker logs mosquitto
 ```
 
+### Verify Connectivity
+You can run the included test script to confirm the broker is accepting messages (uses port 1883):
+```sh
+chmod +x scripts/test-connection.sh
+./scripts/test-connection.sh
+```
+
 ## Step 9: Open Firewall Ports
 On the droplet firewall, allow:
 - `1883` (optional, non-TLS)
