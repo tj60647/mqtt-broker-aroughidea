@@ -106,22 +106,23 @@ persistence true
 persistence_location /mosquitto/data/
 log_dest file /mosquitto/log/mosquitto.log
 
-# Standard MQTT (1883)
-listener 1883
+# Global Authentication (applies to all listeners)
+per_listener_settings false
 allow_anonymous false
 password_file /mosquitto/config/passwords
 acl_file /mosquitto/config/acl
+
+# Standard MQTT (1883)
+listener 1883
 
 # MQTT over TLS (8883)
 listener 8883
 certfile /mosquitto/config/certs/server.crt
 keyfile /mosquitto/config/certs/server.key
 cafile /mosquitto/config/certs/ca.crt
-allow_anonymous false
-password_file /mosquitto/config/passwords
-acl_file /mosquitto/config/acl
 EOF
 ```
+
 
 ## Step 6: Create User Passwords
 Use the official Mosquitto image to generate password hashes.
