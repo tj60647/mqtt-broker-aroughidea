@@ -105,6 +105,7 @@ cat <<EOF > config/mosquitto.conf
 persistence true
 persistence_location /mosquitto/data/
 log_dest file /mosquitto/log/mosquitto.log
+log_dest stdout
 
 # Global Authentication (applies to all listeners)
 per_listener_settings false
