@@ -148,8 +148,9 @@ chmod +x scripts/generate-certs.sh
 ```
 
 **What this does:**
-- Creates `config/certs/ca.crt` (The public certificate authority).
-- Creates `config/certs/server.crt` & `server.key` (The server's credentials).
+- It creates the folder `config/certs/` if it doesn't exist.
+- It generates the files (`ca.crt`, `server.crt`, `server.key`) and places them inside that folder.
+
 
 
 ## Step 8: Start the Broker
