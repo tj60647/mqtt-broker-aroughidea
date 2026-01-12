@@ -20,6 +20,7 @@ We can generate a set of temporary, self-signed certificates to satisfy this req
 ```bash
 ./scripts/generate-certs.sh
 ```
+*   **Note:** These certificates are generated with a 10-year validity, so they are effectively "long-term" for this project. They are self-signed, which is sufficient for starting the server. For a public production application using Secure WebSockets (WSS), you would need valid certificates from a trusted authority (like Let's Encrypt).
 
 ### 3. Start the Broker
 Launch the broker container in the background.
