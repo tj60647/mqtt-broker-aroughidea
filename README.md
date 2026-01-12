@@ -138,19 +138,19 @@ You will be prompted to type a password (e.g., `mqtt-fun-2026`).
 You can repeat this command (without the `-c` flag) to add more distinct users if needed.
 
 ## Step 7: Generate TLS Certificates
-Generate a private CA and server certificate per deployment.
-You may:
-- use your own OpenSSL workflow
-- or implement `scripts/generate-certs.sh`
+We need to create a "Certificate Authority" (CA) and a server certificate so that devices can talk to the broker securely over port 8883.
 
-Certificates must be placed in:
+Run this script (included in the repo) to generate them automatically:
+
+```sh
+chmod +x scripts/generate-certs.sh
+./scripts/generate-certs.sh
 ```
-config/certs/
-  ca.crt
-  server.crt
-  server.key
-```
-These files must never be committed.
+
+**What this does:**
+- Creates `config/certs/ca.crt` (The public certificate authority).
+- Creates `config/certs/server.crt` & `server.key` (The server's credentials).
+
 
 ## Step 8: Start the Broker
 ```sh
