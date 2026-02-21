@@ -2,6 +2,8 @@
 
 This guide configures your broker and p5.js client to use secure WebSockets (`wss://`) on port `9001`.
 
+> This is a client-focused guide. For full DigitalOcean server provisioning and deployment steps (droplet creation, Docker install, firewall, etc.), use [README.md](README.md).
+
 ## Phase 1: Server-Side Configuration
 
 Connect to your DigitalOcean droplet via SSH to perform these steps.
@@ -103,6 +105,17 @@ Browser clients require a trusted certificate chain for `wss://`.
 
 *   For production browser clients, use a domain with a CA-signed certificate (for example, Let's Encrypt).
 *   If using self-signed certs, ensure the CA is trusted on the client machine and certificate hostnames match the URL used in `mqttBrokerHost`.
+
+### Windows: Trust the Local CA for `wss://localhost:9001`
+Run PowerShell **as Administrator** in the repo root:
+
+```powershell
+certutil -addstore -f Root .\config\certs\ca.crt
+```
+
+Then fully restart the browser (all windows) and retry the client connection.
+
+If you regenerate certs, re-import the CA and restart the browser again.
 
 ### Connection Refused?
 *   Check that port **9001** is open on your DigitalOcean firewall.

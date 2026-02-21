@@ -10,6 +10,25 @@ It is single-node, non-high availability, and intentionally simple.
 
 ## Security Roadmap
 - See [ROADMAP.md](ROADMAP.md) for the WSS-only migration and production hardening checklist.
+- See [TRUSTED_CERTS_ROADMAP.md](TRUSTED_CERTS_ROADMAP.md) for DigitalOcean trusted certificate rollout (Let's Encrypt + renewal).
+
+### Trusted Cert Automation (DigitalOcean)
+After configuring Let's Encrypt on the droplet, enable automated renewals:
+
+```sh
+chmod +x scripts/renew-certs-and-reload.sh
+sudo cp scripts/systemd/mqtt-cert-renew.service /etc/systemd/system/
+sudo cp scripts/systemd/mqtt-cert-renew.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now mqtt-cert-renew.timer
+```
+
+Run once manually to verify:
+
+```sh
+sudo systemctl start mqtt-cert-renew.service
+journalctl -u mqtt-cert-renew.service -n 100 --no-pager
+```
 
 ### Architecture Definitions
 - **Single Node:** All components (broker, storage, networking) run on one virtual machine. There is no horizontal scaling.
@@ -238,6 +257,14 @@ scp root@<YOUR_DROPLET_IP>:~/mqtt-broker-aroughidea/config/certs/ca.crt .
 - **Transport:** WebSockets over TLS only.
 - **Auth:** Use the same username/password as other clients.
 - **Certificate trust:** Browser clients require a trusted certificate chain. Self-signed certs can fail in browser contexts unless your OS/browser trusts the generated CA and hostname validation matches.
+
+For local Windows development with `wss://localhost:9001`, import the local CA (PowerShell as Administrator):
+
+```powershell
+certutil -addstore -f Root .\config\certs\ca.crt
+```
+
+Then fully restart the browser before reconnecting.
 
 ## Migration / Reuse
 To move this broker to another host:
