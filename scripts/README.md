@@ -7,4 +7,4 @@ Scripts should:
 
 Typical uses:
 - Creating Mosquitto password files
-- Generating local CA and server certificates
+- Generating local CA and server certificates for `8883` (MQTTS) and `9001` (WSS)

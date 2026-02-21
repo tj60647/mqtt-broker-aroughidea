@@ -8,6 +8,9 @@ This repository defines a portable MQTT broker using Eclipse Mosquitto, intended
 
 It is single-node, non-high availability, and intentionally simple.
 
+## Security Roadmap
+- See [ROADMAP.md](ROADMAP.md) for the WSS-only migration and production hardening checklist.
+
 ### Architecture Definitions
 - **Single Node:** All components (broker, storage, networking) run on one virtual machine. There is no horizontal scaling.
 - **Single Point of Failure:** The broker runs on one node (server/container). If that node crashes or the server goes down, the entire MQTT service stops.
@@ -122,6 +125,13 @@ listener 8883
 certfile /mosquitto/config/certs/server.crt
 keyfile /mosquitto/config/certs/server.key
 cafile /mosquitto/config/certs/ca.crt
+
+# Secure WebSockets (WSS) (9001)
+listener 9001
+protocol websockets
+certfile /mosquitto/config/certs/server.crt
+keyfile /mosquitto/config/certs/server.key
+cafile /mosquitto/config/certs/ca.crt
 EOF
 ```
 
@@ -141,7 +151,7 @@ You will be prompted to type a password (e.g., `mqtt-fun-2026`).
 You can repeat this command (without the `-c` flag) to add more distinct users if needed.
 
 ## Step 7: Generate TLS Certificates
-We need to create a "Certificate Authority" (CA) and a server certificate so that devices can talk to the broker securely over port 8883.
+We need to create a "Certificate Authority" (CA) and a server certificate so that devices can talk to the broker securely over ports 8883 and 9001 (WSS).
 
 Run this script (included in the repo) to generate them automatically:
 
@@ -181,7 +191,7 @@ Run these commands on the droplet:
 ```sh
 sudo ufw allow 1883/tcp comment 'MQTT plaintext'
 sudo ufw allow 8883/tcp comment 'MQTT TLS'
-sudo ufw allow 9001/tcp comment 'MQTT Websockets'
+sudo ufw allow 9001/tcp comment 'MQTT Secure WebSockets (WSS)'
 # Ensure SSH is still allowed (it usually is, but good to be safe)
 sudo ufw allow ssh
 sudo ufw enable
@@ -210,6 +220,12 @@ scp root@<YOUR_DROPLET_IP>:~/mqtt-broker-aroughidea/config/certs/ca.crt .
   - **Client Key:** Leave blank.
   - **Uncheck** "Validate certificate" if you are having hostname issues, but providing the CA is usually enough.
 
+### 3. Configure Browser Clients (WSS)
+- **Broker URL:** `wss://<YOUR_DROPLET_IP>:9001`
+- **Transport:** WebSockets over TLS only.
+- **Auth:** Use the same username/password as other clients.
+- **Certificate trust:** Browser clients require a trusted certificate chain. Self-signed certs can fail in browser contexts unless your OS/browser trusts the generated CA and hostname validation matches.
+
 ## Migration / Reuse
 To move this broker to another host:
 1. Copy the repository
@@ -219,7 +235,7 @@ To move this broker to another host:
 
 ## Troubleshooting
 - **Connection Refused?** Check if the container is running (`docker ps`) and if Firewall ports are open (`sudo ufw status`).
-- **Certificate Errors?** If your client complains about "Hostname mismatch" (because we used a simple self-signed cert), try disabling "Validate Server Certificate" in your client settings, OR regenerate the certs with the specific IP address in `scripts/generate-certs.sh`.
+- **Certificate Errors?** If your client complains about "Hostname mismatch" (because we used a simple self-signed cert), regenerate certs with the actual hostname/IP and trust the CA on the client machine. Browser WSS connections are stricter than desktop MQTT tools.
 - **Logs:** Run `docker logs -f mosquitto` to see why connections are being rejected (e.g., "invalid password").
 
 ## Final Guidance
