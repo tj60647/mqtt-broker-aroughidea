@@ -1,0 +1,11 @@
+# Workshop Access Control List
+# Defines what topics users can read or write to.
+
+# The main workshop user (has full admin access)
+user workshop-user
+topic readwrite #
+
+# Example: If you want to restrict specific users later:
+# user student1
+# topic readwrite workshop/student1/#
+

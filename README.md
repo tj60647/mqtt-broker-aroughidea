@@ -143,6 +143,7 @@ Use the official Mosquitto image to generate password hashes.
 Run this command to create a user named **`workshop-user`**:
 ```sh
 docker run --rm -it \
+   --user 1883:1883 \
   -v "$PWD/config:/mosquitto/config" \
   eclipse-mosquitto:2 \
   sh -lc 'mosquitto_passwd -c /mosquitto/config/passwords workshop-user'
@@ -182,6 +183,18 @@ You can run the included test script to confirm the broker is accepting messages
 ```sh
 chmod +x scripts/test-connection.sh
 ./scripts/test-connection.sh
+```
+
+For MQTT over TLS deployment validation (port 8883):
+```sh
+chmod +x scripts/test-mqtts.sh
+./scripts/test-mqtts.sh
+```
+
+For secure WebSockets deployment validation (`wss://` on port 9001):
+```sh
+chmod +x scripts/test-wss.sh
+./scripts/test-wss.sh
 ```
 
 ## Step 9: Configure Firewall (UFW)

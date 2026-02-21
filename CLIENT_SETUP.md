@@ -21,23 +21,27 @@ Generate a set of certificates:
 ./scripts/generate-certs.sh
 ```
 
-### 3. Start the Broker
-Launch the broker container in the background.
-```bash
-docker compose up -d
-```
-
-### 4. Create an MQTT User
-Anonymous access is disabled by default. You need to create a user.
+### 3. Create an MQTT User
+Anonymous access is disabled by default. You need to create a user before starting the broker.
 For the default ACL and test scripts to work out-of-the-box, we recommend using the username `workshop-user`.
 
 Run the following command:
 ```bash
-docker compose exec mosquitto mosquitto_passwd -c /mosquitto/config/passwords workshop-user
+docker run --rm -it \
+    --user 1883:1883 \
+    -v "$PWD/config:/mosquitto/config" \
+    eclipse-mosquitto:2 \
+    sh -lc 'mosquitto_passwd -c /mosquitto/config/passwords workshop-user'
 ```
 
 *   You will be prompted to enter a password twice.
 *   **Tip:** The included test script assumes the password is `mqtt-fun-2026`. Use that for simplicity, or update the script if you choose your own.
+
+### 4. Start the Broker
+Launch the broker container in the background.
+```bash
+docker compose up -d
+```
 
 ### 5. Verify Server Setup
 Before moving to the client code, verify that your ACLs and user are correctly configured.
