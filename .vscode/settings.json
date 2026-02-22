@@ -1,0 +1,15 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "docker exec": true,
+        "docker run": true,
+        "docker compose": true,
+        "/^bash \\./scripts/test-mqtts\\.sh$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^bash \\./scripts/test-wss\\.sh$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

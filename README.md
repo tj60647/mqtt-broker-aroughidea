@@ -180,6 +180,13 @@ chmod +x scripts/generate-certs.sh
 ./scripts/generate-certs.sh
 ```
 
+After generating or rotating certificates, reload the broker before running tests:
+
+```sh
+docker compose restart mosquitto
+# or: docker kill -s HUP mosquitto
+```
+
 **What this does:**
 - It creates the folder `config/certs/` if it doesn't exist.
 - It generates the files (`ca.crt`, `server.crt`, `server.key`) and places them inside that folder.
@@ -277,6 +284,30 @@ To move this broker to another host:
 - **Connection Refused?** Check if the container is running (`docker ps`) and if Firewall ports are open (`sudo ufw status`).
 - **Certificate Errors?** If your client complains about "Hostname mismatch" (because we used a simple self-signed cert), regenerate certs with the actual hostname/IP and trust the CA on the client machine. Browser WSS connections are stricter than desktop MQTT tools.
 - **Logs:** Run `docker logs -f mosquitto` to see why connections are being rejected (e.g., "invalid password").
+- **Debug Context:** For TLS/cert failures, run diagnostics from Docker context first (for example `docker exec mosquitto ...` or `docker run --network <compose_network> ...`) rather than host shell path assumptions. This avoids Windows/Git-Bash path and mount quirks.
+
+## Security Runbook (Key Exposure / Rotation)
+Use this checklist whenever a private key or password may have been exposed.
+
+1. **Containment**
+   - Treat exposed key material as compromised immediately.
+   - Remove tracked secrets from git index and ensure ignore rules cover generated artifacts.
+
+2. **Eradication**
+   - Rotate CA + server certificates.
+   - Reload broker: `docker compose restart mosquitto` (or `docker kill -s HUP mosquitto`).
+
+3. **Validation (Docker-first)**
+   - Prefer Docker-context diagnostics: `docker exec mosquitto ...` and `docker run --network <compose_network> ...`.
+   - Run smoke tests: `./scripts/test-mqtts.sh` and `./scripts/test-wss.sh`.
+
+4. **Recovery**
+   - Re-distribute new CA trust to clients.
+   - For production, use publicly trusted certs (Let's Encrypt) with automated renewal + reload.
+
+5. **History hygiene**
+   - If secrets ever entered git history, rewrite history and force-push.
+   - Ask collaborators to re-clone or hard-reset to the rewritten history.
 
 ## Final Guidance
 This repository should remain:
