@@ -2,6 +2,10 @@
 config/passwords
 certs/*.key
 certs/*.crt
+certs/*.srl
+config/certs/*.key
+config/certs/*.crt
+config/certs/*.srl
 
 # Runtime state
 data/
