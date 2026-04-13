@@ -1,3 +1,5 @@
+<img src="mqtt-icon.svg" alt="MQTT icon" width="80" align="left" style="margin-right:12px"/>
+
 # Implementation Guide (DigitalOcean + Mosquitto)
 
 ## Overview

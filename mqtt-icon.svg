@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 200 200">
+  <!-- Generator: Adobe Illustrator 30.1.0, SVG Export Plug-In . SVG Version: 2.1.1 Build 136)  -->
+  <defs>
+    <style>
+      .st0, .st1, .st2, .st3 {
+        stroke: #000;
+      }
+
+      .st0, .st4, .st5, .st6, .st3 {
+        fill: none;
+      }
+
+      .st7, .st1 {
+        fill: #fff;
+      }
+
+      .st1, .st2 {
+        stroke-width: 2px;
+      }
+
+      .st4, .st5, .st6 {
+        stroke: #888;
+        stroke-width: 6px;
+      }
+
+      .st5 {
+        stroke-dasharray: 4.19 4.19;
+      }
+
+      .st6 {
+        stroke-dasharray: 3.89 3.89;
+      }
+
+      .st3 {
+        stroke-width: 4px;
+      }
+    </style>
+  </defs>
+  <g>
+    <polyline class="st4" points="98.05 15.82 99.84 14.92 101.63 15.82"/>
+    <line class="st6" x1="105.11" y1="17.56" x2="179.92" y2="54.96"/>
+    <polyline class="st4" points="181.66 55.83 183.45 56.73 183.45 58.73"/>
+    <line class="st5" x1="183.45" y1="62.92" x2="183.45" y2="136.24"/>
+    <polyline class="st4" points="183.45 138.34 183.45 140.34 181.66 141.23"/>
+    <line class="st6" x1="178.18" y1="142.97" x2="103.37" y2="180.37"/>
+    <polyline class="st4" points="101.63 181.24 99.84 182.14 98.05 181.24"/>
+    <line class="st6" x1="94.58" y1="179.5" x2="19.76" y2="142.1"/>
+    <polyline class="st4" points="18.02 141.23 16.24 140.34 16.24 138.34"/>
+    <line class="st5" x1="16.24" y1="134.15" x2="16.24" y2="60.82"/>
+    <polyline class="st4" points="16.24 58.73 16.24 56.73 18.02 55.83"/>
+    <line class="st6" x1="21.5" y1="54.09" x2="96.32" y2="16.69"/>
+  </g>
+  <line class="st3" x1="99.84" y1="14.92" x2="99.84" y2="97.03"/>
+  <line class="st3" x1="183.45" y1="56.73" x2="133.29" y2="106.89"/>
+  <line class="st3" x1="183.45" y1="140.34" x2="133.29" y2="140.34"/>
+  <line class="st3" x1="99.84" y1="182.14" x2="99.84" y2="159.19"/>
+  <line class="st3" x1="16.24" y1="140.34" x2="66.4" y2="140.34"/>
+  <line class="st3" x1="16.24" y1="56.73" x2="66.4" y2="106.89"/>
+  <polygon class="st2" points="99.84 104.17 124.93 117.55 124.93 140.96 99.84 154.34 74.76 140.96 74.76 117.55 99.84 104.17"/>
+  <circle class="st7" cx="99.84" cy="129.25" r="13.38"/>
+  <circle cx="99.84" cy="129.25" r="6.69"/>
+  <circle class="st1" cx="99.84" cy="14.92" r="8.36"/>
+  <circle class="st1" cx="183.45" cy="56.73" r="8.36"/>
+  <circle class="st1" cx="183.45" cy="140.34" r="8.36"/>
+  <circle class="st1" cx="99.84" cy="182.14" r="8.36"/>
+  <circle class="st1" cx="16.24" cy="140.34" r="8.36"/>
+  <circle class="st1" cx="16.24" cy="56.73" r="8.36"/>
+  <rect x="94.83" y="48.37" width="10.03" height="10.03" transform="translate(-8.5 86.24) rotate(-45)"/>
+  <rect x="150.01" y="79.79" width="10.03" height="10.03" transform="translate(-14.56 134.46) rotate(-45)"/>
+  <rect x="150.01" y="135.32" width="10.03" height="10.03" transform="translate(-53.83 150.72) rotate(-45)"/>
+  <rect x="94.83" y="161.42" width="10.03" height="10.03" transform="translate(-88.44 119.35) rotate(-45)"/>
+  <rect x="37.97" y="135.32" width="10.03" height="10.03" transform="translate(-86.64 71.5) rotate(-45)"/>
+  <rect x="37.97" y="77.79" width="10.03" height="10.03" transform="translate(-45.96 54.65) rotate(-45)"/>
+  <path class="st0" d="M83.12,112.53h-8.36v8.36"/>
+  <path class="st0" d="M116.57,112.53h8.36v8.36"/>
+  <path class="st0" d="M116.57,145.97h8.36v-8.36"/>
+  <path class="st0" d="M83.12,145.97h-8.36v-8.36"/>
+</svg>
