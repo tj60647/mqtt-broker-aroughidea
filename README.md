@@ -324,7 +324,13 @@ Browser clients connect using:
 - **URL:** `wss://<YOUR_DROPLET_IP>:9001`
 - **Username/Password:** same as above.
 
-Browsers are stricter about certificate trust. See [CLIENT_SETUP.md](CLIENT_SETUP.md) for full p5.js integration instructions. For production use with real browser clients, use a domain name with a CA-signed certificate (e.g., Let's Encrypt) instead of a self-signed one.
+Browsers are stricter about certificate trust. For production use with real browser clients, use a domain name with a CA-signed certificate (e.g., Let's Encrypt) instead of a self-signed one. See [PRODUCTION_RUNBOOK.md](PRODUCTION_RUNBOOK.md) for the cert migration guide.
+
+### ✅ You're done — share these details with participants
+
+Send participants the broker IP, username, password, and the `ca.crt` file, then point them to:
+
+📄 **[CLIENT_SETUP.md](CLIENT_SETUP.md)** — step-by-step instructions for connecting a p5.js sketch to the broker.
 
 ---
 
