@@ -16,6 +16,11 @@ echo "Generating generic self-signed certificates for workshop..."
 
 # 1. Generate CA (Certificate Authority)
 # This represents the entity trusting the server.
+# NOTE: ca.key is the CA private key. Keep it safe and do not share it.
+# Anyone with this key can issue certificates trusted by your CA.
+# It is stored in $DIR (which is mounted into the container) for convenience
+# in this workshop setup; in production, store it outside the repo and
+# delete it after signing the server certificate.
 openssl req -new -x509 -days 3650 -nodes \
   -keyout "$DIR/ca.key" -out "$DIR/ca.crt" \
   -subj "/O=MQTT Workshop/CN=MQTT CA"

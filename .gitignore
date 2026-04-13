@@ -7,6 +7,9 @@ config/certs/*.key
 config/certs/*.crt
 config/certs/*.srl
 
+# User-generated config (copy from acl.example to create)
+config/acl
+
 # Runtime state
 data/
 log/

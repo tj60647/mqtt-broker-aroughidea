@@ -3,6 +3,10 @@ set -eu
 
 # Renew Let's Encrypt certificates and reload Mosquitto if renewal succeeds.
 # Intended to run on the DigitalOcean droplet.
+#
+# PREREQUISITE: The docker-compose.yml must mount the Let's Encrypt directory
+# into the container (e.g. /etc/letsencrypt:/etc/letsencrypt:ro) and
+# mosquitto.conf must reference those cert paths. See TRUSTED_CERTS_ROADMAP.md.
 
 BROKER_CONTAINER="${BROKER_CONTAINER:-mosquitto}"
 RELOAD_MODE="${RELOAD_MODE:-hup}"

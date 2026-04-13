@@ -37,7 +37,7 @@ docker run --rm -it \
 ```
 
 *   You will be prompted to enter a password twice.
-*   **Tip:** The included test script assumes the password is `mqtt-fun-2026`. Use that for simplicity, or update the script if you choose your own.
+*   **Security:** Do not use a weak or default password on a publicly accessible server. Choose a strong, unique password. The test scripts read credentials from environment variables `MQTT_USER` and `MQTT_PASS`, so you can override the defaults without editing the scripts.
 
 ### 4. Start the Broker
 Launch the broker container in the background.

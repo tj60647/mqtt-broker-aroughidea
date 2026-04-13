@@ -1,3 +1,5 @@
+<img src="mqtt-icon.svg" alt="MQTT icon" width="80" align="left" style="margin-right:12px"/>
+
 # Implementation Guide (DigitalOcean + Mosquitto)
 
 ## Overview
@@ -121,43 +123,23 @@ Copy and edit ACLs:
 cp config/acl.example config/acl
 ```
 
-Create `config/mosquitto.conf` by running this command:
+`config/mosquitto.conf` is already provided in the repository and ready to use. No changes are needed for a workshop deployment.
 
-```sh
-cat <<EOF > config/mosquitto.conf
-persistence true
-persistence_location /mosquitto/data/
-log_dest file /mosquitto/log/mosquitto.log
-log_dest stdout
-
-# Global Authentication (applies to all listeners)
-per_listener_settings false
-allow_anonymous false
-password_file /mosquitto/config/passwords
-acl_file /mosquitto/config/acl
-
-# Standard MQTT (1883)
+**Production note:** If you want to restrict the plaintext MQTT listener to loopback only (recommended when clients can all use TLS on port 8883), open `config/mosquitto.conf` and change:
+```
 listener 1883
-
-# MQTT over TLS (8883)
-listener 8883
-certfile /mosquitto/config/certs/server.crt
-keyfile /mosquitto/config/certs/server.key
-cafile /mosquitto/config/certs/ca.crt
-
-# Secure WebSockets (WSS) (9001)
-listener 9001
-protocol websockets
-certfile /mosquitto/config/certs/server.crt
-keyfile /mosquitto/config/certs/server.key
-cafile /mosquitto/config/certs/ca.crt
-EOF
+```
+to:
+```
+listener 1883 127.0.0.1
 ```
 
 
 ## Step 6: Create User Passwords
 Use the official Mosquitto image to generate password hashes.
 *(Note: You can use a single shared username/password for everyone in a workshop)*
+
+> ⚠️ **Security:** Do not use the default password (`mqtt-fun-2026`) on a publicly accessible server. Choose a strong, unique password. You will use it in all client scripts and connections. The test scripts accept it via the `MQTT_PASS` environment variable.
 
 Run this command to create a user named **`workshop-user`**:
 ```sh
@@ -191,6 +173,8 @@ docker compose restart mosquitto
 - It creates the folder `config/certs/` if it doesn't exist.
 - It generates the files (`ca.crt`, `server.crt`, `server.key`) and places them inside that folder.
 
+> **Note on the CA key:** `ca.key` is also placed in `config/certs/` and is ignored by git. Keep it confidential — anyone with this file can issue certificates trusted by your CA. For a workshop, this is acceptable. For production, consider generating the CA key offline and deleting it after signing the server certificate.
+
 
 
 ## Step 8: Start the Broker
@@ -222,6 +206,8 @@ For secure WebSockets deployment validation (`wss://` on port 9001):
 chmod +x scripts/test-wss.sh
 ./scripts/test-wss.sh
 ```
+
+> **Note:** The test scripts use `--network host` inside Docker, which only works on Linux. On macOS or Windows (Docker Desktop), set `MQTT_HOST=host.docker.internal` before running, or use a locally installed MQTT client instead.
 
 ## Step 9: Configure Firewall (UFW)
 Ubuntu comes with a firewall called `ufw`. It is likely creating a "deny all" rule by default, so we need to open the MQTT ports.
