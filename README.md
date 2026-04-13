@@ -1,87 +1,85 @@
 <img src="mqtt-icon.svg" alt="MQTT icon" width="80" align="left" style="margin-right:12px"/>
 
-# Implementation Guide (DigitalOcean + Mosquitto)
+# MQTT Workshop Broker
 
-## Overview
-This repository defines a portable MQTT broker using Eclipse Mosquitto, intended for:
-- prototyping experiments
-- small workshops
-- temporary or resettable deployments
+<br clear="left"/>
 
-It is single-node, non-high availability, and intentionally simple.
+Welcome! This guide helps you set up a message broker for your workshop — or connect to one that's already running.
 
-## Security Roadmap
-- See [ROADMAP.md](ROADMAP.md) for the WSS-only migration and production hardening checklist.
-- See [TRUSTED_CERTS_ROADMAP.md](TRUSTED_CERTS_ROADMAP.md) for DigitalOcean trusted certificate rollout (Let's Encrypt + renewal).
+**MQTT** is a lightweight messaging protocol. Think of the broker as a post office: devices and browser apps send messages to it, and it forwards them to anyone who is listening. This repository sets up that post office on a cheap cloud server.
 
-### Trusted Cert Automation (DigitalOcean)
-After configuring Let's Encrypt on the droplet, enable automated renewals:
+---
 
-```sh
-chmod +x scripts/renew-certs-and-reload.sh
-sudo cp scripts/systemd/mqtt-cert-renew.service /etc/systemd/system/
-sudo cp scripts/systemd/mqtt-cert-renew.timer /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now mqtt-cert-renew.timer
-```
+## 👋 Are you a workshop participant?
 
-Run once manually to verify:
+If an organizer has already set up the broker for you, head straight to the participant guide:
 
-```sh
-sudo systemctl start mqtt-cert-renew.service
-journalctl -u mqtt-cert-renew.service -n 100 --no-pager
-```
+📄 **[CLIENT_SETUP.md](CLIENT_SETUP.md)** — how to connect your browser or p5.js sketch to the broker.
 
-### Architecture Definitions
-- **Single Node:** All components (broker, storage, networking) run on one virtual machine. There is no horizontal scaling.
-- **Single Point of Failure:** The broker runs on one node (server/container). If that node crashes or the server goes down, the entire MQTT service stops.
-- **No Redundancy:** There are no backup servers or clusters waiting to take over automatically.
-- **Simpler Architecture:** It avoids the complexity of distributed state, clustering protocols, and load balancers, favoring a simpler "easy to destroy and recreate" approach.
+Your organizer should give you:
+- The broker's **IP address** (e.g., `203.0.113.10`)
+- A **username** and **password** (e.g., `workshop-user` / `mqtt-fun-2026`)
+- The **`ca.crt` file** (needed for secure connections — see Step 11 below)
 
-## Deployment Target
-- **Provider:** DigitalOcean
-- **OS:** Ubuntu LTS (22.04 or later)
-- **Runtime:** Docker + Docker Compose
-- **Broker:** Eclipse Mosquitto 2.x
+---
 
-## Step 1: Create a Droplet
-1. Create a new DigitalOcean Droplet
-2. Choose Region: Choose the one closest to you (e.g. NYC1, SFO2)
-3. Choose Image: **Ubuntu 22.04 LTS x64**
-4. Choose Size:
-   - **Droplet Type:** Basic
-   - **CPU Options:** Regular (SSD)
-   - **Price:** $4/mo (512 MB / 1 CPU) or $6/mo (1 GB / 1 CPU) is plenty.
-5. **Authentication Method:** Choose **SSH Key**.
-   - *Need a key?*:
-     1. Open a terminal (PowerShell on Windows, Terminal on Mac/Linux).
+## 🛠️ Are you an organizer setting up the broker?
+
+Follow the steps below. You will:
+1. Rent a small cloud server (DigitalOcean Droplet — about $4–6/month).
+2. Install Docker on it.
+3. Clone this repo and run a few commands.
+4. Share connection details with participants.
+
+**What you need before you start:**
+- A [DigitalOcean account](https://www.digitalocean.com/) (or another Linux VPS provider).
+- A computer with a terminal (PowerShell on Windows, Terminal on Mac/Linux).
+- About 30–45 minutes.
+
+---
+
+## Step 1: Create a Server (DigitalOcean Droplet)
+
+A "Droplet" is DigitalOcean's name for a virtual server.
+
+1. Log in to DigitalOcean and click **Create → Droplets**.
+2. **Region:** Pick the one geographically closest to your participants (e.g., NYC1 or SFO2).
+3. **Image:** Choose **Ubuntu 22.04 LTS x64**.
+4. **Size:**
+   - Droplet Type: **Basic**
+   - CPU: **Regular (SSD)**
+   - $4/mo (512 MB / 1 CPU) or $6/mo (1 GB / 1 CPU) is plenty for a workshop.
+5. **Authentication — SSH Key** (more secure than a password):
+   - If you don't have an SSH key yet:
+     1. Open a terminal on your own computer.
      2. Run: `ssh-keygen -t ed25519 -C "mqtt-broker"`
-        - **Important:** When prompted for a file, just press **Enter** (defaults).
-        - **Passphrase:** Press **Enter** twice for no passphrase (easiest for automation/testing).
-     3. **Copy the Public Key:**
+        - Press **Enter** when asked for a file name (use the default).
+        - Press **Enter** twice when asked for a passphrase (no passphrase is fine here).
+     3. Print your public key:
         - **Windows (PowerShell):** `Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub`
         - **Mac/Linux:** `cat ~/.ssh/id_ed25519.pub`
-     4. **Add to DigitalOcean:**
-        - Click "Add SSH Key" in DigitalOcean and paste the output.
-        - Name it "mqtt-broker".
-6. **Finalize Details:**
-   - **Hostname:** Change the long default name (e.g., `ubuntu-s-1vcpu...`) to something simple like `mqtt-broker`.
-     - *Note:* Look for a field labeled **Hostname** at the very bottom. By default, it will say something like `ubuntu-s-1vcpu-1gb-nyc1-01`. You can type `mqtt-broker` to make it easier to read in your dashboard. If you don't change it, the default name works fine too! It's just a label.
-   - **IPv6:** Uncheck if enabled (not required for this broker).
-   - Click **Create Droplet**.
+     4. In DigitalOcean, click **New SSH Key**, paste the output, and name it `mqtt-broker`.
+6. **Hostname:** Near the bottom of the page, change the default name to something simple like `mqtt-broker`. (This is just a label — it doesn't affect anything.)
+7. **IPv6:** Leave it unchecked — not needed here.
+8. Click **Create Droplet** and wait about 30 seconds for it to start.
 
-## Step 2: Install Docker on the Droplet
-1. **Find your IP Address:** Go to the DigitalOcean dashboard and copy the "ipv4" address of your new droplet (e.g., `203.0.113.10`).
-2. **Connect via SSH:**
-   - Open PowerShell on your computer.
-   - Run: `ssh root@<your_droplet_ip>` (Replace `<your_droplet_ip>` with the actual address).
-   - **First Time Warning:** You will see a message: *The authenticity of host... can't be established.*
-     - This is normal for a new server. Type `yes` and press Enter to continue.
-3. **Run Installation Commands:**
-   Once you are logged in (you will see a prompt like `root@mqtt-broker:~#`), run these commands inside that SSH session.
-   
-   **Block A: Update and Install Docker**
-   *(Paste this entire block first)*
+---
+
+## Step 2: Install Docker on the Server
+
+1. **Find your server's IP address** in the DigitalOcean dashboard (listed under your new Droplet).
+2. **Connect via SSH** from your own computer's terminal:
+   ```sh
+   ssh root@<YOUR_DROPLET_IP>
+   ```
+   The first time you connect, you'll see a message like:
+   > *The authenticity of host '...' can't be established.*
+
+   This is normal. Type `yes` and press Enter.
+
+3. You should now see a prompt like `root@mqtt-broker:~#`. You're on the server. Run the following commands here.
+
+   **Block A — Update and install Docker:**
    ```sh
    sudo apt update
    sudo apt install -y ca-certificates curl gnupg
@@ -90,216 +88,268 @@ journalctl -u mqtt-cert-renew.service -n 100 --no-pager
    newgrp docker
    ```
 
-   **Block B: Install Compose Plugin**
-   *(Run this next)*
+   **Block B — Install the Compose plugin:**
    ```sh
    sudo apt install -y docker-compose-plugin
    ```
 
-   **Block C: Verify Installation**
-   *(Run this last to check if it worked)*
+   **Block C — Verify the installation:**
    ```sh
    docker --version
    docker compose version
    ```
-   **Expected Output:**
-   You should see version numbers for both commands (e.g., `Docker version 29.x.x` and `Docker Compose version v2.x.x`).
+   ✅ You should see version numbers for both (e.g., `Docker version 29.x.x` and `Docker Compose version v2.x.x`).
 
-## Step 3: Clone the Repository
-Run this inside your SSH session (on the droplet):
+---
+
+## Step 3: Download This Repository
+
+Still inside your SSH session (on the server), run:
 ```sh
 git clone https://github.com/tj60647/mqtt-broker-aroughidea.git
 cd mqtt-broker-aroughidea
 ```
 
-## Step 4: Create Runtime Directories
+---
+
+## Step 4: Create Storage Folders
+
+The broker needs folders to save data and logs:
 ```sh
 mkdir -p data log
 ```
 
-## Step 5: Configure Mosquitto
-Copy and edit ACLs:
+---
+
+## Step 5: Set Up Topic Permissions
+
+The broker uses an **Access Control List (ACL)** — a simple text file that controls which users can send or receive messages on which topics.
+
+Copy the example file to activate it:
 ```sh
 cp config/acl.example config/acl
 ```
 
-`config/mosquitto.conf` is already provided in the repository and ready to use. No changes are needed for a workshop deployment.
+The default ACL gives `workshop-user` full access to all topics. You can edit `config/acl` later to add per-student restrictions if you need them.
 
-**Production note:** If you want to restrict the plaintext MQTT listener to loopback only (recommended when clients can all use TLS on port 8883), open `config/mosquitto.conf` and change:
-```
-listener 1883
-```
-to:
-```
-listener 1883 127.0.0.1
-```
+The main configuration file (`config/mosquitto.conf`) is already included in the repo and ready to use — no edits needed for a standard workshop.
 
+> **Production tip:** If all your clients will connect over TLS (port 8883), you can restrict the unencrypted listener to the server itself. Open `config/mosquitto.conf` and change `listener 1883` to `listener 1883 127.0.0.1`.
 
-## Step 6: Create User Passwords
-Use the official Mosquitto image to generate password hashes.
-*(Note: You can use a single shared username/password for everyone in a workshop)*
+---
 
-> ⚠️ **Security:** Do not use the default password (`mqtt-fun-2026`) on a publicly accessible server. Choose a strong, unique password. You will use it in all client scripts and connections. The test scripts accept it via the `MQTT_PASS` environment variable.
+## Step 6: Create a User Account
+
+The broker requires a username and password — anonymous connections are disabled for security. For a workshop, one shared account is usually fine.
 
 Run this command to create a user named **`workshop-user`**:
 ```sh
 docker run --rm -it \
-   --user 1883:1883 \
+  --user 1883:1883 \
   -v "$PWD/config:/mosquitto/config" \
   eclipse-mosquitto:2 \
   sh -lc 'mosquitto_passwd -c /mosquitto/config/passwords workshop-user'
 ```
-You will be prompted to type a password (e.g., `mqtt-fun-2026`).
-You can repeat this command (without the `-c` flag) to add more distinct users if needed.
+You'll be prompted to type a password twice. Choose something memorable for the workshop (e.g., `mqtt-fun-2026`).
 
-## Step 7: Generate TLS Certificates
-We need to create a "Certificate Authority" (CA) and a server certificate so that devices can talk to the broker securely over ports 8883 and 9001 (WSS).
+> ⚠️ **Don't use a weak default password on a public server.** Anyone who finds the broker's IP address could connect. Pick something that isn't trivially guessable.
 
-Run this script (included in the repo) to generate them automatically:
+To add a second user later (without overwriting the first), drop the `-c` flag:
+```sh
+docker run --rm -it \
+  --user 1883:1883 \
+  -v "$PWD/config:/mosquitto/config" \
+  eclipse-mosquitto:2 \
+  sh -lc 'mosquitto_passwd /mosquitto/config/passwords anotheruser'
+```
 
+---
+
+## Step 7: Generate Security Certificates
+
+Certificates are what allow devices to talk to the broker **securely** (encrypted, so no one can eavesdrop). We generate a self-signed set specifically for this workshop.
+
+Run the included script:
 ```sh
 chmod +x scripts/generate-certs.sh
 ./scripts/generate-certs.sh
 ```
 
-After generating or rotating certificates, reload the broker before running tests:
+This creates three files inside `config/certs/`:
 
+| File | What it is |
+|------|-----------|
+| `ca.crt` | The "trust anchor" — distribute this to participants |
+| `server.crt` | The broker's identity certificate |
+| `server.key` | The broker's private key — keep this secret |
+
+> **About `ca.key`:** This file is also generated and kept in `config/certs/`. It is excluded from git. Guard it — anyone with this file could impersonate your broker. For a short workshop this is fine; for long-running production use, store it somewhere safer.
+
+If you ever regenerate certificates, restart the broker afterwards:
 ```sh
 docker compose restart mosquitto
-# or: docker kill -s HUP mosquitto
 ```
 
-**What this does:**
-- It creates the folder `config/certs/` if it doesn't exist.
-- It generates the files (`ca.crt`, `server.crt`, `server.key`) and places them inside that folder.
-
-> **Note on the CA key:** `ca.key` is also placed in `config/certs/` and is ignored by git. Keep it confidential — anyone with this file can issue certificates trusted by your CA. For a workshop, this is acceptable. For production, consider generating the CA key offline and deleting it after signing the server certificate.
-
-
+---
 
 ## Step 8: Start the Broker
+
 ```sh
 docker compose up -d
 ```
 
-Verify:
+Check that it started:
 ```sh
 docker ps
 docker logs mosquitto
 ```
 
-### Verify Connectivity
-You can run the included test script to confirm the broker is accepting messages (uses port 1883):
+You should see the broker's startup messages and no errors.
+
+---
+
+## Step 9: Open the Firewall
+
+Ubuntu includes a firewall (`ufw`) that blocks all ports by default. Open the ports the broker uses:
+
+```sh
+sudo ufw allow ssh
+sudo ufw allow 1883/tcp comment 'MQTT plaintext'
+sudo ufw allow 8883/tcp comment 'MQTT TLS'
+sudo ufw allow 9001/tcp comment 'MQTT Secure WebSockets'
+sudo ufw enable
+```
+
+Verify:
+```sh
+sudo ufw status
+```
+
+---
+
+## Step 10: Verify Everything Works
+
+Run the built-in test scripts to confirm the broker is accepting connections.
+
+**Test plain MQTT (port 1883):**
 ```sh
 chmod +x scripts/test-connection.sh
 ./scripts/test-connection.sh
 ```
 
-For MQTT over TLS deployment validation (port 8883):
+**Test MQTT over TLS (port 8883):**
 ```sh
 chmod +x scripts/test-mqtts.sh
 ./scripts/test-mqtts.sh
 ```
 
-For secure WebSockets deployment validation (`wss://` on port 9001):
+**Test secure WebSockets (port 9001 — used by browser clients):**
 ```sh
 chmod +x scripts/test-wss.sh
 ./scripts/test-wss.sh
 ```
 
-> **Note:** The test scripts use `--network host` inside Docker, which only works on Linux. On macOS or Windows (Docker Desktop), set `MQTT_HOST=host.docker.internal` before running, or use a locally installed MQTT client instead.
+✅ Each script prints `SUCCESS: Message received!` if everything is working.
 
-## Step 9: Configure Firewall (UFW)
-Ubuntu comes with a firewall called `ufw`. It is likely creating a "deny all" rule by default, so we need to open the MQTT ports.
+> **Note:** These test scripts use `--network host` inside Docker, which only works on Linux. If you're running them from macOS or Windows (Docker Desktop), run `export MQTT_HOST=host.docker.internal` first, or use a locally installed MQTT client instead.
 
-Run these commands on the droplet:
+---
+
+## Step 11: Share Connection Details with Participants
+
+Give participants the following information (a quick message or printed card works well):
+
+| Setting | Value |
+|---------|-------|
+| Broker IP | `<YOUR_DROPLET_IP>` |
+| Secure port | `8883` (MQTT over TLS) |
+| WebSocket port | `9001` (for browser/p5.js clients) |
+| Username | `workshop-user` |
+| Password | *(the password you chose in Step 6)* |
+| CA Certificate | `config/certs/ca.crt` *(see below)* |
+
+### Distributing the CA Certificate
+
+Participants need the `ca.crt` file so their computer trusts the broker. To get it off the server, run this **on your own computer** (not the server):
+
 ```sh
-sudo ufw allow 1883/tcp comment 'MQTT plaintext'
-sudo ufw allow 8883/tcp comment 'MQTT TLS'
-sudo ufw allow 9001/tcp comment 'MQTT Secure WebSockets (WSS)'
-# Ensure SSH is still allowed (it usually is, but good to be safe)
-sudo ufw allow ssh
-sudo ufw enable
-```
-
-## Step 10: Secure Client Connection (The "Loose End")
-To connect securely from your **local computer** (e.g., using MQTT Explorer), you need the **Certificate Authority (CA)** file we generated in Step 7. Without it, your computer won't trust the broker.
-
-### 1. Download the CA Certificate
-Run this command **on your local computer** (not the droplet):
-
-```sh
-# Replace with your actual droplet IP
 scp root@<YOUR_DROPLET_IP>:~/mqtt-broker-aroughidea/config/certs/ca.crt .
 ```
-*This downloads `ca.crt` to your current folder.*
 
-### 2. Configure MQTT Explorer (or other clients)
-- **Host:** `<YOUR_DROPLET_IP>`
-- **Port:** `8883`
-- **Protocol:** `mqtts` (TLS)
-- **Username/Password:** `workshop-user` / `mqtt-fun-2026` (or whatever you set)
-- **TLS/certificates:**
-  - **CA Certificate:** Select the `ca.crt` file you just downloaded.
-  - **Client Certificate:** Leave blank.
-  - **Client Key:** Leave blank.
-  - **Uncheck** "Validate certificate" if you are having hostname issues, but providing the CA is usually enough.
+You can then share the file via email, Slack, a shared folder, or a USB drive.
 
-### 3. Configure Browser Clients (WSS)
-- **Broker URL:** `wss://<YOUR_DROPLET_IP>:9001`
-- **Transport:** WebSockets over TLS only.
-- **Auth:** Use the same username/password as other clients.
-- **Certificate trust:** Browser clients require a trusted certificate chain. Self-signed certs can fail in browser contexts unless your OS/browser trusts the generated CA and hostname validation matches.
+### Participant connection settings (MQTT Explorer or similar tool)
 
-For local Windows development with `wss://localhost:9001`, import the local CA (PowerShell as Administrator):
+| Field | Value |
+|-------|-------|
+| Protocol | `mqtts` |
+| Host | `<YOUR_DROPLET_IP>` |
+| Port | `8883` |
+| Username | `workshop-user` |
+| Password | *(your password)* |
+| CA Certificate | Select the `ca.crt` file |
+| Client Certificate | *(leave blank)* |
+| Client Key | *(leave blank)* |
 
+If a client gets a "hostname mismatch" error, regenerate certs with the server's actual IP address:
+```sh
+CERT_CN=<your_droplet_ip> CERT_SAN_IP_1=<your_droplet_ip> ./scripts/generate-certs.sh
+docker compose restart mosquitto
+```
+Then redistribute the new `ca.crt`.
+
+### Browser and p5.js clients (WebSockets)
+
+Browser clients connect using:
+- **URL:** `wss://<YOUR_DROPLET_IP>:9001`
+- **Username/Password:** same as above.
+
+Browsers are stricter about certificate trust. See [CLIENT_SETUP.md](CLIENT_SETUP.md) for full p5.js integration instructions. For production use with real browser clients, use a domain name with a CA-signed certificate (e.g., Let's Encrypt) instead of a self-signed one.
+
+---
+
+## Troubleshooting
+
+**"Connection refused" error**
+- Is the container running? → `docker ps`
+- Are firewall ports open? → `sudo ufw status`
+
+**"Certificate error" or "hostname mismatch"**
+- The self-signed cert defaults to `localhost`. If clients connect by IP, regenerate certs with the IP address as the CN/SAN (see Step 11 above).
+- Browser WSS connections are stricter than desktop tools.
+
+**"Invalid password" or "not authorized"**
+- Check broker logs: `docker logs -f mosquitto`
+- Make sure the username in `config/acl` matches the one you created in Step 6.
+
+**Tests fail on macOS/Windows**
+- The test scripts need `MQTT_HOST=host.docker.internal`. Set that environment variable before running.
+
+**Windows: Trusting the CA for `wss://localhost:9001`**
+
+Run PowerShell as Administrator in the repo folder:
 ```powershell
 certutil -addstore -f Root .\config\certs\ca.crt
 ```
+Then close and reopen your browser completely.
 
-Then fully restart the browser before reconnecting.
+---
 
-## Migration / Reuse
-To move this broker to another host:
-1. Copy the repository
-2. Copy `data/` if persistence matters
-3. Regenerate certificates if hostname/IP changes
-4. Recreate passwords if desired
+## Moving or Resetting the Broker
 
-## Troubleshooting
-- **Connection Refused?** Check if the container is running (`docker ps`) and if Firewall ports are open (`sudo ufw status`).
-- **Certificate Errors?** If your client complains about "Hostname mismatch" (because we used a simple self-signed cert), regenerate certs with the actual hostname/IP and trust the CA on the client machine. Browser WSS connections are stricter than desktop MQTT tools.
-- **Logs:** Run `docker logs -f mosquitto` to see why connections are being rejected (e.g., "invalid password").
-- **Debug Context:** For TLS/cert failures, run diagnostics from Docker context first (for example `docker exec mosquitto ...` or `docker run --network <compose_network> ...`) rather than host shell path assumptions. This avoids Windows/Git-Bash path and mount quirks.
+To move the broker to a new server:
+1. Copy the repository folder.
+2. Copy `data/` too, if you want to keep stored messages.
+3. Regenerate certificates (the new server will have a different IP).
+4. Recreate passwords if you want a fresh start.
 
-## Security Runbook (Key Exposure / Rotation)
-Use this checklist whenever a private key or password may have been exposed.
+To reset for a new workshop: delete `config/passwords`, `config/certs/`, and `data/`, then repeat Steps 6–8.
 
-1. **Containment**
-   - Treat exposed key material as compromised immediately.
-   - Remove tracked secrets from git index and ensure ignore rules cover generated artifacts.
+---
 
-2. **Eradication**
-   - Rotate CA + server certificates.
-   - Reload broker: `docker compose restart mosquitto` (or `docker kill -s HUP mosquitto`).
+## Security Notes
 
-3. **Validation (Docker-first)**
-   - Prefer Docker-context diagnostics: `docker exec mosquitto ...` and `docker run --network <compose_network> ...`.
-   - Run smoke tests: `./scripts/test-mqtts.sh` and `./scripts/test-wss.sh`.
-
-4. **Recovery**
-   - Re-distribute new CA trust to clients.
-   - For production, use publicly trusted certs (Let's Encrypt) with automated renewal + reload.
-
-5. **History hygiene**
-   - If secrets ever entered git history, rewrite history and force-push.
-   - Ask collaborators to re-clone or hard-reset to the rewritten history.
-
-## Final Guidance
-This repository should remain:
-- small
-- explicit
-- boring
-- safe
-
-If it starts to feel like an “app,” it has grown too far.
+- **Passwords** (`config/passwords`) and **certificates** (`config/certs/`) are excluded from git — they are generated at runtime.
+- **Never commit these files** to the repository.
+- If a password or certificate may have been exposed, regenerate it immediately and restart the broker.
+- For a long-running production deployment, use a domain name with a CA-signed certificate (e.g., Let's Encrypt) instead of self-signed ones. See [PRODUCTION_RUNBOOK.md](PRODUCTION_RUNBOOK.md) for the full cert migration and renewal guide.
