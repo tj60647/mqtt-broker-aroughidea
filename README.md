@@ -17,9 +17,10 @@ If an organizer has already set up the broker for you, head straight to the part
 📄 **[CLIENT_SETUP.md](CLIENT_SETUP.md)** — how to connect your browser or p5.js sketch to the broker.
 
 Your organizer should give you:
-- The broker's **IP address** (e.g., `203.0.113.10`)
+- The broker's **address** (e.g., `mqtt.example.com` or `203.0.113.10`)
 - A **username** and **password** (e.g., `workshop-user` / `mqtt-fun-2026`)
-- The **`ca.crt` file** (needed for secure connections — see Step 11 below)
+
+> If your organizer also gives you a **`ca.crt` file**, follow the certificate install step in CLIENT_SETUP.md before connecting.
 
 ---
 
@@ -34,6 +35,7 @@ Follow the steps below. You will:
 **What you need before you start:**
 - A [DigitalOcean account](https://www.digitalocean.com/) (or another Linux VPS provider).
 - A computer with a terminal (PowerShell on Windows, Terminal on Mac/Linux).
+- A domain name you control, with an **A record** pointing to your droplet's IP (e.g., `mqtt.example.com`). Free registrars like [Freenom](https://www.freenom.com) work; DigitalOcean can also manage DNS.
 - About 30–45 minutes.
 
 ---
@@ -185,30 +187,105 @@ docker run --rm -it \
 
 ---
 
-## Step 7: Generate Security Certificates
+## Step 7: Get a TLS Certificate
 
-Certificates are what allow devices to talk to the broker **securely** (encrypted, so no one can eavesdrop). We generate a self-signed set specifically for this workshop.
+Certificates let devices and browsers connect to the broker **securely** (encrypted). The recommended approach is a free, publicly trusted certificate from **Let's Encrypt** — participants never need to install a CA file because their devices already trust it.
 
-Run the included script:
+**Prerequisites:**
+- A domain name with an **A record** pointing to your droplet's IP (e.g., `mqtt.example.com`).
+- DNS has propagated: `dig mqtt.your-domain.com` returns your droplet IP.
+
+Choose one option:
+
+---
+
+### Option A — HTTP-01 (simplest; briefly uses port 80)
+
 ```sh
-chmod +x scripts/generate-certs.sh
-./scripts/generate-certs.sh
+sudo apt install -y certbot
+sudo certbot certonly --standalone \
+  --non-interactive --agree-tos \
+  -m your-email@example.com \
+  -d mqtt.your-domain.com
 ```
 
-This creates three files inside `config/certs/`:
+> Certbot temporarily listens on port 80 to prove domain ownership, then exits. If your firewall blocks port 80, use Option B instead.
 
-| File | What it is |
-|------|-----------|
-| `ca.crt` | The "trust anchor" — distribute this to participants |
-| `server.crt` | The broker's identity certificate |
-| `server.key` | The broker's private key — keep this secret |
+---
 
-> **About `ca.key`:** This file is also generated and kept in `config/certs/`. It is excluded from git. Guard it — anyone with this file could impersonate your broker. For a short workshop this is fine; for long-running production use, store it somewhere safer.
+### Option B — DNS-01 via DigitalOcean API (no port 80; supports wildcards)
 
-If you ever regenerate certificates, restart the broker afterwards:
-```sh
-docker compose restart mosquitto
+This option proves domain ownership through the DigitalOcean DNS API — port 80 is never touched.
+
+1. In the DigitalOcean control panel, go to **API → Tokens → Generate New Token**.
+   - Name it `certbot-dns`.
+   - Grant it **write** access to **domains** only.
+   - Copy the token — you will not see it again.
+
+2. Save the token to the droplet:
+   ```sh
+   sudo mkdir -p /etc/letsencrypt
+   sudo sh -c 'cat > /etc/letsencrypt/digitalocean.ini <<EOF
+dns_digitalocean_token = YOUR_TOKEN_HERE
+EOF'
+   sudo chmod 600 /etc/letsencrypt/digitalocean.ini
+   ```
+
+3. Install certbot and the DigitalOcean DNS plugin:
+   ```sh
+   sudo apt install -y certbot python3-certbot-dns-digitalocean
+   ```
+
+4. Request the certificate:
+   ```sh
+   sudo certbot certonly \
+     --dns-digitalocean \
+     --dns-digitalocean-credentials /etc/letsencrypt/digitalocean.ini \
+     --non-interactive --agree-tos \
+     -m your-email@example.com \
+     -d mqtt.your-domain.com
+   ```
+
+---
+
+After either option, your certificate files are at:
+
+| File | Path |
+|------|------|
+| Certificate + chain | `/etc/letsencrypt/live/mqtt.your-domain.com/fullchain.pem` |
+| Private key | `/etc/letsencrypt/live/mqtt.your-domain.com/privkey.pem` |
+
+### Wire the Certificate into Mosquitto
+
+**1. Mount Let's Encrypt into the container.** Open `docker-compose.yml` and add this line to the `volumes:` list under the `mosquitto` service (indent to match the existing entries):
+
+```yaml
+      - /etc/letsencrypt:/etc/letsencrypt:ro
 ```
+
+**2. Update `config/mosquitto.conf`** so both TLS listeners point to your Let's Encrypt files. Replace the `cafile`, `certfile`, and `keyfile` lines in both the `8883` and `9001` listener blocks with:
+
+```
+certfile /etc/letsencrypt/live/mqtt.your-domain.com/fullchain.pem
+keyfile  /etc/letsencrypt/live/mqtt.your-domain.com/privkey.pem
+```
+
+Remove the `cafile` lines — they are not needed when using a public CA.
+
+**3. Restart the broker** (required after config changes):
+
+```sh
+docker compose up -d
+```
+
+---
+
+> **Not using a domain?** You can use a self-signed certificate instead:
+> ```sh
+> chmod +x scripts/generate-certs.sh
+> ./scripts/generate-certs.sh
+> ```
+> Skip the `docker-compose.yml` and `mosquitto.conf` edits above — the config already points to the self-signed cert paths. Note: participants will need to install the `config/certs/ca.crt` file before their browser trusts the connection (see Step 11).
 
 ---
 
@@ -239,6 +316,12 @@ sudo ufw allow 8883/tcp comment 'MQTT TLS'
 sudo ufw allow 9001/tcp comment 'MQTT Secure WebSockets'
 sudo ufw enable
 ```
+
+> **Using HTTP-01 cert issuance (Option A in Step 7)?** Also allow port 80 while certbot runs:
+> ```sh
+> sudo ufw allow 80/tcp comment 'ACME HTTP-01 challenge'
+> ```
+> You can remove it afterwards: `sudo ufw delete allow 80/tcp`
 
 Verify:
 ```sh
@@ -277,60 +360,56 @@ chmod +x scripts/test-wss.sh
 
 ## Step 11: Share Connection Details with Participants
 
-Give participants the following information (a quick message or printed card works well):
+Give participants the following (a quick message or printed card works well):
 
 | Setting | Value |
 |---------|-------|
-| Broker IP | `<YOUR_DROPLET_IP>` |
+| Broker address | `mqtt.your-domain.com` |
 | Secure port | `8883` (MQTT over TLS) |
 | WebSocket port | `9001` (for browser/p5.js clients) |
 | Username | `workshop-user` |
 | Password | *(the password you chose in Step 6)* |
-| CA Certificate | `config/certs/ca.crt` *(see below)* |
 
-### Distributing the CA Certificate
-
-Participants need the `ca.crt` file so their computer trusts the broker. To get it off the server, run this **on your own computer** (not the server):
-
-```sh
-scp root@<YOUR_DROPLET_IP>:~/mqtt-broker-aroughidea/config/certs/ca.crt .
-```
-
-You can then share the file via email, Slack, a shared folder, or a USB drive.
+With a Let's Encrypt certificate, participants connect using the domain name — no CA certificate file to distribute.
 
 ### Participant connection settings (MQTT Explorer or similar tool)
 
 | Field | Value |
 |-------|-------|
 | Protocol | `mqtts` |
-| Host | `<YOUR_DROPLET_IP>` |
+| Host | `mqtt.your-domain.com` |
 | Port | `8883` |
 | Username | `workshop-user` |
 | Password | *(your password)* |
-| CA Certificate | Select the `ca.crt` file |
+| CA Certificate | *(leave blank — trusted automatically)* |
 | Client Certificate | *(leave blank)* |
 | Client Key | *(leave blank)* |
-
-If a client gets a "hostname mismatch" error, regenerate certs with the server's actual IP address:
-```sh
-CERT_CN=<your_droplet_ip> CERT_SAN_IP_1=<your_droplet_ip> ./scripts/generate-certs.sh
-docker compose restart mosquitto
-```
-Then redistribute the new `ca.crt`.
 
 ### Browser and p5.js clients (WebSockets)
 
 Browser clients connect using:
-- **URL:** `wss://<YOUR_DROPLET_IP>:9001`
+- **URL:** `wss://mqtt.your-domain.com:9001`
 - **Username/Password:** same as above.
 
-Browsers are stricter about certificate trust. For production use with real browser clients, use a domain name with a CA-signed certificate (e.g., Let's Encrypt) instead of a self-signed one. See [PRODUCTION_RUNBOOK.md](PRODUCTION_RUNBOOK.md) for the cert migration guide.
+Browsers trust Let's Encrypt certificates automatically — no cert file to install.
 
 ### ✅ You're done — share these details with participants
 
-Send participants the broker IP, username, password, and the `ca.crt` file, then point them to:
+Send participants the broker address, username, and password, then point them to:
 
 📄 **[CLIENT_SETUP.md](CLIENT_SETUP.md)** — step-by-step instructions for connecting a p5.js sketch to the broker.
+
+---
+
+> **Using self-signed certificates?** Participants need the `config/certs/ca.crt` file before their browser will trust the connection.
+>
+> Get it off the server by running this **on your own computer** (not the server):
+> ```sh
+> scp root@<YOUR_DROPLET_IP>:~/mqtt-broker-aroughidea/config/certs/ca.crt .
+> ```
+> Share the file via email, Slack, a shared folder, or a USB drive. Participants follow the CA trust instructions in CLIENT_SETUP.md before they can connect.
+>
+> Use the droplet IP address (not a domain name) in all connection settings, and add the `ca.crt` file to the CA Certificate field in MQTT Explorer.
 
 ---
 
@@ -341,7 +420,13 @@ Send participants the broker IP, username, password, and the `ca.crt` file, then
 - Are firewall ports open? → `sudo ufw status`
 
 **"Certificate error" or "hostname mismatch"**
-- The self-signed cert defaults to `localhost`. If clients connect by IP, regenerate certs with the IP address as the CN/SAN (see Step 11 above).
+- With **Let's Encrypt certs**: make sure the domain name in `mosquitto.conf` matches the hostname participants use. If you changed the domain after issuance, re-run certbot.
+- With **self-signed certs**: the cert defaults to `localhost`. If clients connect by IP, regenerate certs with the IP as the CN/SAN:
+  ```sh
+  CERT_CN=<your_droplet_ip> CERT_SAN_IP_1=<your_droplet_ip> ./scripts/generate-certs.sh
+  docker compose restart mosquitto
+  ```
+  Then redistribute the new `ca.crt`.
 - Browser WSS connections are stricter than desktop tools.
 
 **"Invalid password" or "not authorized"**
@@ -351,7 +436,7 @@ Send participants the broker IP, username, password, and the `ca.crt` file, then
 **Tests fail on macOS/Windows**
 - The test scripts need `MQTT_HOST=host.docker.internal`. Set that environment variable before running.
 
-**Windows: Trusting the CA for `wss://localhost:9001`**
+**Windows: Trusting the CA for `wss://` (self-signed certs only)**
 
 Run PowerShell as Administrator in the repo folder:
 ```powershell
@@ -366,7 +451,7 @@ Then close and reopen your browser completely.
 To move the broker to a new server:
 1. Copy the repository folder.
 2. Copy `data/` too, if you want to keep stored messages.
-3. Regenerate certificates (the new server will have a different IP).
+3. Point your domain's A record to the new droplet IP, then re-run certbot (if using Let's Encrypt). Or regenerate self-signed certs if using those.
 4. Recreate passwords if you want a fresh start.
 
 To reset for a new workshop: delete `config/passwords`, `config/certs/`, and `data/`, then repeat Steps 6–8.
@@ -378,4 +463,5 @@ To reset for a new workshop: delete `config/passwords`, `config/certs/`, and `da
 - **Passwords** (`config/passwords`) and **certificates** (`config/certs/`) are excluded from git — they are generated at runtime.
 - **Never commit these files** to the repository.
 - If a password or certificate may have been exposed, regenerate it immediately and restart the broker.
-- For a long-running production deployment, use a domain name with a CA-signed certificate (e.g., Let's Encrypt) instead of self-signed ones. See [PRODUCTION_RUNBOOK.md](PRODUCTION_RUNBOOK.md) for the full cert migration and renewal guide.
+- **Let's Encrypt private keys** (`/etc/letsencrypt/live/*/privkey.pem`) live outside the repo and are managed by certbot. Keep the `/etc/letsencrypt/` directory accessible only to root.
+- For self-signed setups, the `ca.key` file in `config/certs/` is excluded from git but must be kept safe — anyone with it could impersonate your broker.

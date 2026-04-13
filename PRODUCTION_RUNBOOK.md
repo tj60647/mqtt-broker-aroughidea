@@ -12,8 +12,8 @@ This document is the single source of truth for operating and hardening this bro
 | Broker | Eclipse Mosquitto `eclipse-mosquitto:2` |
 | Listeners | `1883` plaintext · `8883` MQTTS · `9001` WSS |
 | Auth | Username/password required; no anonymous access |
-| Cert strategy (workshop) | Self-signed CA + server cert generated at runtime |
-| Cert strategy (production) | CA-signed via Let's Encrypt (`certbot`) |
+| Cert strategy (recommended) | Let's Encrypt via `certbot` — publicly trusted, no CA file to distribute |
+| Cert strategy (fallback) | Self-signed CA + server cert generated at runtime — requires participants to install `ca.crt` |
 
 ---
 
@@ -53,7 +53,7 @@ This document is the single source of truth for operating and hardening this bro
 
 ## Part 2 — Trusted Certificates (Let's Encrypt)
 
-This section moves the broker from self-signed certificates to publicly trusted certificates for production clients, especially browsers using `wss://`.
+Let's Encrypt is the recommended certificate strategy for this broker. Publicly trusted certificates eliminate the need to distribute a `ca.crt` file to participants and make browser WSS connections work without any trust bypass.
 
 **Goal:** trusted TLS on `8883` (MQTTS) and `9001` (WSS).
 
@@ -61,34 +61,72 @@ This section moves the broker from self-signed certificates to publicly trusted 
 
 #### 1. Domain and DNS
 - Buy or use an existing domain (example: `example.com`).
-- Create DNS records pointing to your droplet public IP:
-  - `mqtt.example.com` (A record)
-  - Optional: `wss.example.com` (A record)
+- Create a DNS A record pointing to your droplet public IP:
+  - `mqtt.example.com → <DROPLET_IP>`
+- Verify propagation before running certbot:
+  ```sh
+  dig mqtt.example.com
+  ```
 
 #### 2. Network and Host Readiness
 - Ensure ports are reachable:
   - `22` (SSH)
-  - `80` (HTTP, needed for ACME HTTP-01 if using certbot standalone/nginx)
-  - `443` (optional, if you host web apps/reverse proxy)
+  - `80` (HTTP — required for HTTP-01 challenge; not needed for DNS-01)
   - `8883` and `9001` (broker listeners)
 - Keep system time accurate (`timedatectl status`) to avoid TLS validation issues.
 
 ### Phase 2: Certificate Issuance (Let's Encrypt)
 
-Choose one issuance pattern.
+Choose one issuance method.
 
-#### Option A (simple): Certbot on droplet
-- Install certbot.
-- Request cert for `mqtt.example.com` (and any additional SAN names you need).
-- Store under `/etc/letsencrypt/live/<name>/`.
+#### Option A — HTTP-01 (simplest; briefly uses port 80)
 
-#### Option B (DNS challenge)
-- Use DNS-01 if you cannot expose port `80` or need wildcard certs.
-- Configure provider plugin/API credentials securely outside git.
+```sh
+sudo apt install -y certbot
+sudo certbot certonly --standalone \
+  --non-interactive --agree-tos \
+  -m your-email@example.com \
+  -d mqtt.example.com
+```
+
+Certbot temporarily listens on port 80 to prove domain ownership and then exits. If port 80 is firewalled, use Option B.
+
+#### Option B — DNS-01 via DigitalOcean API (no port 80; supports wildcards)
+
+This method uses the DigitalOcean DNS API — port 80 is never touched and wildcard certificates are supported.
+
+1. In the DigitalOcean control panel, go to **API → Tokens → Generate New Token**.
+   - Name: `certbot-dns`
+   - Grant **write** access to **domains** only.
+   - Copy the token — you will not see it again.
+
+2. Save the token to the droplet (outside git, root-readable only):
+   ```sh
+   sudo mkdir -p /etc/letsencrypt
+   sudo sh -c 'cat > /etc/letsencrypt/digitalocean.ini <<EOF
+dns_digitalocean_token = YOUR_TOKEN_HERE
+EOF'
+   sudo chmod 600 /etc/letsencrypt/digitalocean.ini
+   ```
+
+3. Install certbot and the DigitalOcean DNS plugin:
+   ```sh
+   sudo apt install -y certbot python3-certbot-dns-digitalocean
+   ```
+
+4. Request the certificate:
+   ```sh
+   sudo certbot certonly \
+     --dns-digitalocean \
+     --dns-digitalocean-credentials /etc/letsencrypt/digitalocean.ini \
+     --non-interactive --agree-tos \
+     -m your-email@example.com \
+     -d mqtt.example.com
+   ```
 
 **Acceptance criteria:**
-- `fullchain.pem` and `privkey.pem` exist.
-- Chain validates publicly.
+- `fullchain.pem` and `privkey.pem` exist under `/etc/letsencrypt/live/mqtt.example.com/`.
+- Chain validates publicly: `openssl s_client -connect mqtt.example.com:8883 -CAfile /etc/ssl/certs/ca-certificates.crt`
 
 ### Phase 3: Wire Trusted Certs into Mosquitto
 

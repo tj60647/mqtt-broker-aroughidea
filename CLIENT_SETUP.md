@@ -6,16 +6,19 @@ This guide is for **workshop participants**. Your organizer has already set up t
 
 | | |
 |---|---|
-| Broker IP | e.g. `203.0.113.10` |
+| Broker address | e.g. `mqtt.example.com` or `203.0.113.10` |
 | Username | e.g. `workshop-user` |
 | Password | e.g. `mqtt-fun-2026` |
-| CA certificate file | `ca.crt` |
+
+> **Did your organizer also give you a `ca.crt` file?** If yes, install it first — see the optional step below. If not, skip straight to Step 1.
 
 If you are an organizer setting up the broker for the first time, see [README.md](README.md) instead.
 
 ---
 
-## Step 1: Trust the CA Certificate
+## Optional: Install a CA Certificate (self-signed certs only)
+
+Skip this section if your organizer did **not** give you a `ca.crt` file.
 
 Your browser needs the `ca.crt` file to trust the broker's self-signed certificate.
 
@@ -50,18 +53,19 @@ Then restart your browser.
 
 ---
 
-## Step 2: Update Your p5.js Sketch
+## Step 1: Update Your p5.js Sketch
 
 Open your p5.js sketch and make the following two changes.
 
 ### 1. Set the broker URL
 
-Find the line defining `mqttBrokerHost` and replace it with your organizer's IP address:
+Find the line defining `mqttBrokerHost` and replace it with your organizer's address:
 
 ```javascript
 // Use wss:// and port 9001 for secure WebSockets
-// Example: let mqttBrokerHost = 'wss://203.0.113.10:9001';
-let mqttBrokerHost = 'wss://<YOUR_BROKER_IP>:9001';
+// Example (domain): let mqttBrokerHost = 'wss://mqtt.example.com:9001';
+// Example (IP):     let mqttBrokerHost = 'wss://203.0.113.10:9001';
+let mqttBrokerHost = 'wss://<YOUR_BROKER_ADDRESS>:9001';
 ```
 
 ### 2. Add your credentials
@@ -91,15 +95,16 @@ function setupMqttClient() {
 
 ### Certificate error or "your connection is not private"
 
-- Make sure you completed Step 1 and **fully restarted** your browser (all windows).
-- If you regenerated certs or received a new `ca.crt`, repeat Step 1.
-- On Windows, if the error persists, run `certutil -delstore Root mqtt-workshop-ca` first, then re-add it.
+- If your organizer gave you a `ca.crt` file: make sure you completed the optional CA install step above and **fully restarted** your browser (all windows).
+- If you regenerated certs or received a new `ca.crt`, repeat the install step.
+- On Windows, if the error persists after reinstalling, run `certutil -delstore Root mqtt-workshop-ca` first, then re-add it.
+- If your organizer is using a Let's Encrypt certificate (no `ca.crt` given), this error usually means the domain name in your URL doesn't match what the certificate was issued for — confirm the address with your organizer.
 
 ### "Connection refused" or sketch won't connect
 
 - Double-check that you used `wss://` (not `ws://`) and port `9001`.
-- Confirm the broker IP with your organizer.
-- Try opening `https://<YOUR_BROKER_IP>:9001` in your browser — if you see a certificate warning instead of a blank page, your cert is not yet trusted (go back to Step 1).
+- Confirm the broker address with your organizer.
+- Try opening `https://<YOUR_BROKER_ADDRESS>:9001` in your browser — if you see a certificate warning instead of a blank page, your cert is not yet trusted (go back to the optional install step if you have a `ca.crt`).
 
 ### Credentials rejected
 

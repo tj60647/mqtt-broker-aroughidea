@@ -11,6 +11,8 @@ services:
       - ./config:/mosquitto/config
       - ./data:/mosquitto/data
       - ./log:/mosquitto/log
+      # Uncomment the line below when using Let's Encrypt certificates (see README Step 7):
+      #- /etc/letsencrypt:/etc/letsencrypt:ro
     healthcheck:
       test: ["CMD-SHELL", "nc -z localhost 1883 || exit 1"]
       interval: 30s
