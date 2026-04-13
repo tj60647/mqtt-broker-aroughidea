@@ -304,7 +304,7 @@ Browser clients connect using:
 - **URL:** `wss://<YOUR_DROPLET_IP>:9001`
 - **Username/Password:** same as above.
 
-Browsers are stricter about certificate trust. See [CLIENT_SETUP.md](CLIENT_SETUP.md) for full p5.js integration instructions. For production use with real browser clients, consider using a domain name with a free Let's Encrypt certificate — see [TRUSTED_CERTS_ROADMAP.md](TRUSTED_CERTS_ROADMAP.md).
+Browsers are stricter about certificate trust. See [CLIENT_SETUP.md](CLIENT_SETUP.md) for full p5.js integration instructions. For production use with real browser clients, use a domain name with a CA-signed certificate (e.g., Let's Encrypt) instead of a self-signed one.
 
 ---
 
@@ -352,12 +352,4 @@ To reset for a new workshop: delete `config/passwords`, `config/certs/`, and `da
 - **Passwords** (`config/passwords`) and **certificates** (`config/certs/`) are excluded from git — they are generated at runtime.
 - **Never commit these files** to the repository.
 - If a password or certificate may have been exposed, regenerate it immediately and restart the broker.
-- For a long-running production deployment, use a domain name + Let's Encrypt certificates instead of self-signed ones. See [TRUSTED_CERTS_ROADMAP.md](TRUSTED_CERTS_ROADMAP.md).
-
----
-
-## Advanced Topics
-
-- [ROADMAP.md](ROADMAP.md) — WSS-only migration and production hardening checklist.
-- [TRUSTED_CERTS_ROADMAP.md](TRUSTED_CERTS_ROADMAP.md) — How to set up Let's Encrypt certificates for production browser use.
-- [CLIENT_SETUP.md](CLIENT_SETUP.md) — Full guide for connecting a p5.js browser client.
+- For a long-running production deployment, use a domain name with a CA-signed certificate (e.g., Let's Encrypt) instead of self-signed ones.
