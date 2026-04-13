@@ -6,5 +6,10 @@ After=network-online.target docker.service
 [Service]
 Type=oneshot
 User=root
+# Adjust WorkingDirectory to the actual repository path on your droplet if it
+# differs from the default clone location under /root.
 WorkingDirectory=/root/mqtt-broker-aroughidea
 ExecStart=/bin/sh -lc './scripts/renew-certs-and-reload.sh'
+
+[Install]
+WantedBy=multi-user.target

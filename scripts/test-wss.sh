@@ -5,6 +5,10 @@ set -euo pipefail
 # Validates:
 # 1) TLS handshake on WebSocket listener
 # 2) Authenticated subscribe/publish over wss://
+#
+# NOTE: These containers use --network host, which works on Linux only.
+# On Docker Desktop (macOS/Windows), set MQTT_HOST=host.docker.internal
+# or run mosquitto_pub/mosquitto_sub from the host directly.
 
 USER_NAME="${MQTT_USER:-workshop-user}"
 PASSWORD="${MQTT_PASS:-mqtt-fun-2026}"
