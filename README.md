@@ -352,4 +352,4 @@ To reset for a new workshop: delete `config/passwords`, `config/certs/`, and `da
 - **Passwords** (`config/passwords`) and **certificates** (`config/certs/`) are excluded from git — they are generated at runtime.
 - **Never commit these files** to the repository.
 - If a password or certificate may have been exposed, regenerate it immediately and restart the broker.
-- For a long-running production deployment, use a domain name with a CA-signed certificate (e.g., Let's Encrypt) instead of self-signed ones.
+- For a long-running production deployment, use a domain name with a CA-signed certificate (e.g., Let's Encrypt) instead of self-signed ones. See [PRODUCTION_RUNBOOK.md](PRODUCTION_RUNBOOK.md) for the full cert migration and renewal guide.
