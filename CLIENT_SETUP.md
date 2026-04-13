@@ -4,7 +4,18 @@ This guide configures your broker and p5.js client to use secure WebSockets (`ws
 
 > This is a client-focused guide. For full DigitalOcean server provisioning and deployment steps (droplet creation, Docker install, firewall, etc.), use [README.md](README.md).
 
+> **Who should read which phase?**
+>
+> | Phase | For whom | What it covers |
+> |---|---|---|
+> | **Phase 1** | Workshop **organizer** | Final server-side checklist — run these steps on your droplet before distributing this file to participants |
+> | **Phase 2** | Workshop **participant** | Everything needed to connect a p5.js sketch to the running broker |
+>
+> If you are a **participant** and your organizer has already set up the broker, skip directly to [Phase 2](#phase-2-update-your-p5js-script). Your organizer should give you the broker IP address, a username/password, and the `ca.crt` file.
+
 ## Phase 1: Server-Side Configuration
+
+> **Note for organizers:** Phase 1 exists here as a compact server-readiness checklist. It covers only the steps that are directly required for p5.js / WebSocket clients to work (ACL, certificates, user account, and starting the broker). For full provisioning detail (droplet creation, Docker install, firewall setup, verification scripts) refer to [README.md](README.md). Once you have completed Phase 1, share this document — or just Phase 2 — with your participants.
 
 Connect to your DigitalOcean droplet via SSH to perform these steps.
 

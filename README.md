@@ -110,6 +110,26 @@ git clone https://github.com/tj60647/mqtt-broker-aroughidea.git
 cd mqtt-broker-aroughidea
 ```
 
+> **Why clone this repo?**
+>
+> The `eclipse-mosquitto:2` Docker image provides only the broker binary — it starts up with no authentication, no TLS, and no topic restrictions. On its own it is not safe to expose to the internet. This repository is the *configuration layer* that makes it workshop-ready:
+>
+> | File / folder | What it provides |
+> |---|---|
+> | `docker-compose.yml` | Wires the container, port mappings, and volume mounts together |
+> | `config/mosquitto.conf` | Pre-configured listeners (1883, 8883, 9001), TLS paths, auth required |
+> | `config/acl.example` | Topic permission template — copy once and edit |
+> | `scripts/generate-certs.sh` | Generates a local CA + server cert so TLS works out of the box |
+> | `scripts/test-*.sh` | Smoke tests to confirm each listener is working |
+>
+> Without cloning, you would need to create every one of these files by hand on the server before the container does anything useful.
+>
+> **Why not build a custom Docker image?**
+> We use `eclipse-mosquitto:2` directly (no custom `Dockerfile`). All configuration is mounted into the container as read-only volumes at runtime. This means:
+> - Secrets (passwords, certificates) never get baked into a Docker image layer.
+> - You can change `mosquitto.conf` or `config/acl` and reload the broker with a single `SIGHUP` — no image rebuild, no redeploy.
+> - The setup is auditable: every config decision is a plain text file you can read and version in git.
+
 ---
 
 ## Step 4: Create Storage Folders
