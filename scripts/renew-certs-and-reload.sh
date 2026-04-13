@@ -5,8 +5,8 @@ set -eu
 # Intended to run on the DigitalOcean droplet.
 #
 # PREREQUISITE: The docker-compose.yml must mount the Let's Encrypt directory
-# into the container (e.g. /etc/letsencrypt:/etc/letsencrypt:ro) and
-# mosquitto.conf must reference those cert paths. See TRUSTED_CERTS_ROADMAP.md.
+# into the container (uncomment the /etc/letsencrypt volume line) and
+# mosquitto.conf must use the Let's Encrypt cert paths. See README.md Step 7.
 
 BROKER_CONTAINER="${BROKER_CONTAINER:-mosquitto}"
 RELOAD_MODE="${RELOAD_MODE:-hup}"
