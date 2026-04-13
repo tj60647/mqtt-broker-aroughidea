@@ -1,100 +1,78 @@
-# Connecting a p5.js Client to Your DigitalOcean Broker (WSS)
+# Participant Setup — Connecting to the Workshop Broker
 
-This guide configures your broker and p5.js client to use secure WebSockets (`wss://`) on port `9001`.
+This guide is for **workshop participants**. Your organizer has already set up the broker — you just need to connect your p5.js sketch to it.
 
-> This is a client-focused guide. For full DigitalOcean server provisioning and deployment steps (droplet creation, Docker install, firewall, etc.), use [README.md](README.md).
+**Before you start, your organizer should have given you:**
 
-> **Who should read which phase?**
->
-> | Phase | For whom | What it covers |
-> |---|---|---|
-> | **Phase 1** | Workshop **organizer** | Final server-side checklist — run these steps on your droplet before distributing this file to participants |
-> | **Phase 2** | Workshop **participant** | Everything needed to connect a p5.js sketch to the running broker |
->
-> If you are a **participant** and your organizer has already set up the broker, skip directly to [Phase 2](#phase-2-update-your-p5js-script). Your organizer should give you the broker IP address, a username/password, and the `ca.crt` file.
+| | |
+|---|---|
+| Broker IP | e.g. `203.0.113.10` |
+| Username | e.g. `workshop-user` |
+| Password | e.g. `mqtt-fun-2026` |
+| CA certificate file | `ca.crt` |
 
-## Phase 1: Server-Side Configuration
-
-> **Note for organizers:** Phase 1 exists here as a compact server-readiness checklist. It covers only the steps that are directly required for p5.js / WebSocket clients to work (ACL, certificates, user account, and starting the broker). For full provisioning detail (droplet creation, Docker install, firewall setup, verification scripts) refer to [README.md](README.md). Once you have completed Phase 1, share this document — or just Phase 2 — with your participants.
-
-Connect to your DigitalOcean droplet via SSH to perform these steps.
-
-### 1. Prepare Configuration Files
-The broker needs an Access Control List (ACL) to define permissions. Run the following commands to get to the repository root:
-```bash
-cd mqtt-broker-aroughidea
-cp config/acl.example config/acl
-```
-
-### 2. Generate Certificates
-The broker uses TLS for both MQTT over TLS (`8883`) and secure WebSockets (`9001`). Mosquitto will fail to start if the certificate files referenced in `mosquitto.conf` do not exist.
-
-Generate a set of certificates:
-```bash
-./scripts/generate-certs.sh
-```
-
-### 3. Create an MQTT User
-Anonymous access is disabled by default. You need to create a user before starting the broker.
-For the default ACL and test scripts to work out-of-the-box, we recommend using the username `workshop-user`.
-
-Run the following command:
-```bash
-docker run --rm -it \
-    --user 1883:1883 \
-    -v "$PWD/config:/mosquitto/config" \
-    eclipse-mosquitto:2 \
-    sh -lc 'mosquitto_passwd -c /mosquitto/config/passwords workshop-user'
-```
-
-*   You will be prompted to enter a password twice.
-*   **Security:** Do not use a weak or default password on a publicly accessible server. Choose a strong, unique password. The test scripts read credentials from environment variables `MQTT_USER` and `MQTT_PASS`, so you can override the defaults without editing the scripts.
-
-### 4. Start the Broker
-Launch the broker container in the background.
-```bash
-docker compose up -d
-```
-
-### 5. Verify Server Setup
-Before moving to the client code, verify that your ACLs and user are correctly configured.
-
-**A. Verify ACL File**
-```bash
-ls -l config/acl
-```
-
-**B. Run the Test Script**
-```bash
-./scripts/test-connection.sh
-```
-
-*   If successfully configured, you will see: `✅ SUCCESS: Message received!`
-*   If it fails, check that your created user matches the one in `config/acl` and `scripts/test-connection.sh`.
+If you are an organizer setting up the broker for the first time, see [README.md](README.md) instead.
 
 ---
 
-## Phase 2: Update Your p5.js Script
+## Step 1: Trust the CA Certificate
 
-Open your p5.js script code and make the following changes.
+Your browser needs the `ca.crt` file to trust the broker's self-signed certificate.
 
-### 1. Update the Host URL
-Find the line defining `mqttBrokerHost`. Use `wss://` and port `9001`.
+**Windows**
 
-```javascript
-// REPLACE <YOUR_DROPLET_IP> with your actual DigitalOcean IPv4 address.
-// Example: let mqttBrokerHost = 'wss://192.168.1.100:9001';
-let mqttBrokerHost = 'wss://<YOUR_DROPLET_IP>:9001';
+Run PowerShell **as Administrator** in the folder where you saved `ca.crt`:
+
+```powershell
+certutil -addstore -f Root .\ca.crt
 ```
 
-### 2. Add Authentication Options
-Find `setupMqttClient()` and pass credentials in the options object.
+Then close and reopen your browser completely.
+
+**macOS**
+
+```sh
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ca.crt
+```
+
+Then restart your browser.
+
+**Linux**
+
+Copy the cert to the system trust store and update it:
+
+```sh
+sudo cp ca.crt /usr/local/share/ca-certificates/mqtt-workshop-ca.crt
+sudo update-ca-certificates
+```
+
+Then restart your browser.
+
+---
+
+## Step 2: Update Your p5.js Sketch
+
+Open your p5.js sketch and make the following two changes.
+
+### 1. Set the broker URL
+
+Find the line defining `mqttBrokerHost` and replace it with your organizer's IP address:
+
+```javascript
+// Use wss:// and port 9001 for secure WebSockets
+// Example: let mqttBrokerHost = 'wss://203.0.113.10:9001';
+let mqttBrokerHost = 'wss://<YOUR_BROKER_IP>:9001';
+```
+
+### 2. Add your credentials
+
+Find `setupMqttClient()` and add your username and password to the options object:
 
 ```javascript
 function setupMqttClient() {
     const options = {
-        username: 'myuser',
-        password: 'mypassword',
+        username: 'workshop-user',  // replace with credentials from your organizer
+        password: 'mqtt-fun-2026',  // replace with credentials from your organizer
         keepalive: 60,
         protocol: 'wss',
         clean: true,
@@ -111,24 +89,19 @@ function setupMqttClient() {
 
 ## Troubleshooting
 
-### TLS / Certificate Errors in Browser
-Browser clients require a trusted certificate chain for `wss://`.
+### Certificate error or "your connection is not private"
 
-*   For production browser clients, use a domain with a CA-signed certificate (for example, Let's Encrypt).
-*   If using self-signed certs, ensure the CA is trusted on the client machine and certificate hostnames match the URL used in `mqttBrokerHost`.
+- Make sure you completed Step 1 and **fully restarted** your browser (all windows).
+- If you regenerated certs or received a new `ca.crt`, repeat Step 1.
+- On Windows, if the error persists, run `certutil -delstore Root mqtt-workshop-ca` first, then re-add it.
 
-### Windows: Trust the Local CA for `wss://localhost:9001`
-Run PowerShell **as Administrator** in the repo root:
+### "Connection refused" or sketch won't connect
 
-```powershell
-certutil -addstore -f Root .\config\certs\ca.crt
-```
+- Double-check that you used `wss://` (not `ws://`) and port `9001`.
+- Confirm the broker IP with your organizer.
+- Try opening `https://<YOUR_BROKER_IP>:9001` in your browser — if you see a certificate warning instead of a blank page, your cert is not yet trusted (go back to Step 1).
 
-Then fully restart the browser (all windows) and retry the client connection.
+### Credentials rejected
 
-If you regenerate certs, re-import the CA and restart the browser again.
-
-### Connection Refused?
-*   Check that port **9001** is open on your DigitalOcean firewall.
-*   Ensure the Docker container is running: `docker compose ps`
-*   Check the logs for errors: `docker compose logs -f mosquitto`
+- Check for typos in username and password — they are case-sensitive.
+- Ask your organizer to confirm the credentials.
