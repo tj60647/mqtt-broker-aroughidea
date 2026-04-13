@@ -257,10 +257,14 @@ After either option, your certificate files are at:
 
 ### Wire the Certificate into Mosquitto
 
-**1. Mount Let's Encrypt into the container.** Open `docker-compose.yml` and add this line to the `volumes:` list under the `mosquitto` service (indent to match the existing entries):
+**1. Mount Let's Encrypt into the container.** Open `docker-compose.yml` and uncomment the `/etc/letsencrypt` line that is already present in the `volumes:` block:
 
 ```yaml
-      - /etc/letsencrypt:/etc/letsencrypt:ro
+    volumes:
+      - ./config:/mosquitto/config
+      - ./data:/mosquitto/data
+      - ./log:/mosquitto/log
+      - /etc/letsencrypt:/etc/letsencrypt:ro   # ← uncomment this line
 ```
 
 **2. Update `config/mosquitto.conf`** so both TLS listeners point to your Let's Encrypt files. Replace the `cafile`, `certfile`, and `keyfile` lines in both the `8883` and `9001` listener blocks with:
@@ -403,7 +407,7 @@ Send participants the broker address, username, and password, then point them to
 
 > **Using self-signed certificates?** Participants need the `config/certs/ca.crt` file before their browser will trust the connection.
 >
-> Get it off the server by running this **on your own computer** (not the server):
+> Get it off the server by running this **on your own computer** (not the server), adjusting the path if you cloned the repo under a different name:
 > ```sh
 > scp root@<YOUR_DROPLET_IP>:~/mqtt-broker-aroughidea/config/certs/ca.crt .
 > ```
