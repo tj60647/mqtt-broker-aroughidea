@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # Directory for certs
 DIR="./config/certs"
@@ -54,7 +54,7 @@ chmod 600 "$DIR/server.key" "$DIR/ca.key"
 
 echo "------------------------------------------------"
 echo "Certificates created in $DIR:"
-ls -1 $DIR
+ls -1 "$DIR"
 echo "------------------------------------------------"
 echo "IMPORTANT:"
 echo "You must download '$DIR/ca.crt' to your local machine"
