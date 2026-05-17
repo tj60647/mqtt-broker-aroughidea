@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # ── Job 1: Shell script linting ──────────────────────────────────────────
+  lint:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run ShellCheck on all scripts
+        uses: ludeeus/action-shellcheck@2.0.0
+        with:
+          scandir: './scripts'
+          ignore_paths: 'scripts/systemd'
+
+  # ── Job 2: Docker Compose config validation ───────────────────────────────
+  validate-config:
+    name: Validate docker-compose.yml
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: docker compose config
+        run: docker compose config --quiet
+
+  # ── Job 3: Integration smoke tests (all three listeners) ─────────────────
+  integration:
+    name: Smoke tests (1883 / 8883 / 9001)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create runtime directories
+        run: mkdir -p data log
+
+      - name: Activate ACL
+        run: cp config/acl.example config/acl
+
+      - name: Generate self-signed certificates
+        run: |
+          chmod +x scripts/generate-certs.sh
+          ./scripts/generate-certs.sh
+
+      - name: Create test password file (non-interactive)
+        run: |
+          docker run --rm \
+            -v "$PWD/config:/mosquitto/config" \
+            eclipse-mosquitto:2 \
+            sh -c 'mosquitto_passwd -b -c /mosquitto/config/passwords workshop-user ci-test-password && chmod 644 /mosquitto/config/passwords'
+
+      - name: Start broker
+        run: docker compose up -d
+
+      - name: Wait for broker to be ready
+        run: |
+          for i in $(seq 1 10); do
+            nc -z localhost 1883 && echo "Broker ready" && break
+            echo "Waiting... ($i/10)"
+            sleep 2
+          done
+
+      - name: Smoke test — plain MQTT (1883)
+        env:
+          MQTT_PASS: ci-test-password
+        run: |
+          chmod +x scripts/test-connection.sh
+          ./scripts/test-connection.sh
+
+      - name: Smoke test — MQTTS (8883)
+        env:
+          MQTT_PASS: ci-test-password
+        run: |
+          chmod +x scripts/test-mqtts.sh
+          ./scripts/test-mqtts.sh
+
+      - name: Smoke test — Secure WebSockets (9001)
+        env:
+          MQTT_PASS: ci-test-password
+        run: |
+          chmod +x scripts/test-wss.sh
+          ./scripts/test-wss.sh
+
+      - name: Stop broker
+        if: always()
+        run: docker compose down
