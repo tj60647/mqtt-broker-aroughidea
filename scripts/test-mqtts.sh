@@ -11,35 +11,34 @@ HOST="${MQTT_HOST:-localhost}"
 PORT="${MQTT_MQTTS_PORT:-8883}"
 TOPIC="${MQTT_TOPIC:-test/healthcheck}"
 MESSAGE="${MQTT_MESSAGE:-HELLO_MQTTS}"
+READY_MESSAGE="READY_PROBE_${RANDOM}_$$"
 CA_FILE="${MQTT_CA_FILE:-$PWD/config/certs/ca.crt}"
 SUB_NAME="mqtt-mqtts-tester-sub"
+SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
+
+# shellcheck source=scripts/smoke-test-lib.sh disable=SC1091
+. "$SCRIPT_DIR/smoke-test-lib.sh"
 
 cleanup() {
-  docker stop "$SUB_NAME" > /dev/null 2>&1 || true
+  cleanup_container "$SUB_NAME"
 }
 
 trap cleanup EXIT
 
-publish_with_retry() {
-  max_attempts=5
-  attempt=1
+publish_once() {
+  local payload="$1"
+  docker run --rm --network host \
+    -v "$CA_FILE:/certs/ca.crt:ro" \
+    eclipse-mosquitto:2 \
+    mosquitto_pub -h "$HOST" -p "$PORT" --cafile /certs/ca.crt -u "$USER_NAME" -P "$PASSWORD" -t "$TOPIC" -m "$payload"
+}
 
-  while [ "$attempt" -le "$max_attempts" ]; do
-    if docker run --rm --network host \
-      -v "$CA_FILE:/certs/ca.crt:ro" \
-      eclipse-mosquitto:2 \
-      mosquitto_pub -h "$HOST" -p "$PORT" --cafile /certs/ca.crt -u "$USER_NAME" -P "$PASSWORD" -t "$TOPIC" -m "$MESSAGE"; then
-      return 0
-    fi
+publish_readiness_probe() {
+  publish_once "$READY_MESSAGE"
+}
 
-    if [ "$attempt" -lt "$max_attempts" ]; then
-      echo "   Publish attempt $attempt/$max_attempts failed, retrying..."
-      sleep 1
-    fi
-    attempt=$((attempt + 1))
-  done
-
-  return 1
+publish_test_message() {
+  publish_once "$MESSAGE"
 }
 
 if [ ! -f "$CA_FILE" ]; then
@@ -64,21 +63,27 @@ else
 fi
 
 echo "[2/4] Starting authenticated MQTTS subscriber..."
-docker run --name "$SUB_NAME" --rm -d --network host \
+docker run --name "$SUB_NAME" -d --network host \
   -v "$CA_FILE:/certs/ca.crt:ro" \
   eclipse-mosquitto:2 \
-  mosquitto_sub -h "$HOST" -p "$PORT" --cafile /certs/ca.crt -u "$USER_NAME" -P "$PASSWORD" -t "$TOPIC" -v > /dev/null
+  mosquitto_sub -d -h "$HOST" -p "$PORT" --cafile /certs/ca.crt -u "$USER_NAME" -P "$PASSWORD" -t "$TOPIC" -v > /dev/null
 
-if ! docker ps --format '{{.Names}}' | grep -qx "$SUB_NAME"; then
-  echo "❌ FAILURE: MQTTS subscriber failed to start."
-  docker logs "$SUB_NAME" 2>&1 || true
+if ! wait_for_subscriber_ready "$SUB_NAME" "MQTTS"; then
   exit 1
 fi
 
-sleep 2
+if ! publish_with_retry publish_readiness_probe; then
+  echo "❌ FAILURE: MQTTS readiness probe publish failed."
+  docker logs mosquitto 2>&1 | tail -n 50 || true
+  exit 1
+fi
+
+if ! wait_for_subscriber_message "$SUB_NAME" "$READY_MESSAGE" "MQTTS"; then
+  exit 1
+fi
 
 echo "[3/4] Publishing authenticated MQTTS message '$MESSAGE'..."
-if ! publish_with_retry; then
+if ! publish_with_retry publish_test_message; then
   echo "❌ FAILURE: MQTTS publish failed after retries."
   echo "   Broker logs:"
   docker logs mosquitto 2>&1 | tail -n 50 || true

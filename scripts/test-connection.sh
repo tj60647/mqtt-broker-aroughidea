@@ -13,33 +13,32 @@ HOST="${MQTT_HOST:-localhost}"
 PORT="${MQTT_PORT:-1883}"
 TOPIC="${MQTT_TOPIC:-test/healthcheck}"
 MESSAGE="${MQTT_MESSAGE:-HELLO_WORLD}"
+READY_MESSAGE="READY_PROBE_${RANDOM}_$$"
 SUB_NAME="mqtt-tester-sub"
+SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
+
+# shellcheck source=scripts/smoke-test-lib.sh disable=SC1091
+. "$SCRIPT_DIR/smoke-test-lib.sh"
 
 cleanup() {
-  docker stop "$SUB_NAME" > /dev/null 2>&1 || true
+  cleanup_container "$SUB_NAME"
 }
 
 trap cleanup EXIT
 
-publish_with_retry() {
-  max_attempts=5
-  attempt=1
+publish_once() {
+  local payload="$1"
+  docker run --rm --network host \
+    eclipse-mosquitto:2 \
+    mosquitto_pub -h "$HOST" -p "$PORT" -u "$USER" -P "$PASS" -t "$TOPIC" -m "$payload"
+}
 
-  while [ "$attempt" -le "$max_attempts" ]; do
-    if docker run --rm --network host \
-      eclipse-mosquitto:2 \
-      mosquitto_pub -h "$HOST" -p "$PORT" -u "$USER" -P "$PASS" -t "$TOPIC" -m "$MESSAGE"; then
-      return 0
-    fi
+publish_readiness_probe() {
+  publish_once "$READY_MESSAGE"
+}
 
-    if [ "$attempt" -lt "$max_attempts" ]; then
-      echo "   Publish attempt $attempt/$max_attempts failed, retrying..."
-      sleep 1
-    fi
-    attempt=$((attempt + 1))
-  done
-
-  return 1
+publish_test_message() {
+  publish_once "$MESSAGE"
 }
 
 echo "----------------------------------------------------------------"
@@ -49,22 +48,27 @@ echo "----------------------------------------------------------------"
 # 1. Start a Subscriber in the background
 # We name it 'mqtt-tester-sub' so we can find it and kill it later.
 echo "[1/3] Starting background subscriber..."
-docker run --name "$SUB_NAME" --rm -d --network host \
+docker run --name "$SUB_NAME" -d --network host \
   eclipse-mosquitto:2 \
-  mosquitto_sub -h "$HOST" -p "$PORT" -u "$USER" -P "$PASS" -t "$TOPIC" -v > /dev/null
+  mosquitto_sub -d -h "$HOST" -p "$PORT" -u "$USER" -P "$PASS" -t "$TOPIC" -v > /dev/null
 
-if ! docker ps --format '{{.Names}}' | grep -qx "$SUB_NAME"; then
-  echo "❌ FAILURE: Subscriber failed to start."
-  docker logs "$SUB_NAME" 2>&1 || true
+if ! wait_for_subscriber_ready "$SUB_NAME" "MQTT"; then
   exit 1
 fi
 
-# Give it a moment to connect
-sleep 2
+if ! publish_with_retry publish_readiness_probe; then
+  echo "❌ FAILURE: Readiness probe publish failed."
+  docker logs mosquitto 2>&1 | tail -n 50 || true
+  exit 1
+fi
+
+if ! wait_for_subscriber_message "$SUB_NAME" "$READY_MESSAGE" "MQTT"; then
+  exit 1
+fi
 
 # 2. Publish a message
 echo "[2/3] Publishing test message '$MESSAGE'..."
-if ! publish_with_retry; then
+if ! publish_with_retry publish_test_message; then
   echo "❌ FAILURE: Publish failed after retries."
   echo "   Broker logs:"
   docker logs mosquitto 2>&1 | tail -n 50 || true
