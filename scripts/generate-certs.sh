@@ -1,9 +1,10 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # Directory for certs
 DIR="./config/certs"
 mkdir -p "$DIR"
+CERTS_DIR="$(cd "$DIR" && pwd)"
 
 # Certificate identity defaults (override via env vars if needed)
 CERT_CN="${CERT_CN:-localhost}"
@@ -52,9 +53,23 @@ rm "$DIR/server.csr" "$DIR/server.ext"
 chmod 644 "$DIR/server.crt" "$DIR/ca.crt"
 chmod 600 "$DIR/server.key" "$DIR/ca.key"
 
+if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+  docker run --rm --user 0:0 \
+    -v "$CERTS_DIR:/certs" \
+    eclipse-mosquitto:2 \
+    sh -eu -c '
+      chown 1883:1883 /certs/server.key
+      chmod 600 /certs/server.key
+    '
+else
+  echo "WARNING: Docker is not available, so server.key ownership was not aligned for the Mosquitto container user."
+  echo "         If the broker cannot start, fix it with:"
+  echo "         docker run --rm --user 0:0 -v \"$CERTS_DIR:/certs\" eclipse-mosquitto:2 sh -eu -c 'chown 1883:1883 /certs/server.key && chmod 600 /certs/server.key'"
+fi
+
 echo "------------------------------------------------"
 echo "Certificates created in $DIR:"
-ls -1 $DIR
+ls -1 "$DIR"
 echo "------------------------------------------------"
 echo "IMPORTANT:"
 echo "You must download '$DIR/ca.crt' to your local machine"
