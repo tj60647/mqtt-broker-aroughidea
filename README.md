@@ -122,6 +122,7 @@ cd mqtt-broker-aroughidea
 > | `config/mosquitto.conf` | Pre-configured listeners (1883, 8883, 9001), TLS paths, auth required |
 > | `config/acl.example` | Topic permission template — copy once and edit |
 > | `scripts/generate-certs.sh` | Generates a local CA + server cert so TLS works out of the box |
+> | `scripts/preflight-check.sh` | Validates all required runtime files exist before starting the broker |
 > | `scripts/test-*.sh` | Smoke tests to confirm each listener is working |
 >
 > Without cloning, you would need to create every one of these files by hand on the server before the container does anything useful.
@@ -294,6 +295,14 @@ docker compose up -d
 ---
 
 ## Step 8: Start the Broker
+
+Before starting, run the pre-flight check to confirm all required files are in place:
+```sh
+chmod +x scripts/preflight-check.sh
+./scripts/preflight-check.sh
+```
+
+✅ The script prints a green checkmark for each required file and exits with an error if anything is missing. Fix any missing files (refer to the steps above) before continuing.
 
 ```sh
 docker compose up -d
