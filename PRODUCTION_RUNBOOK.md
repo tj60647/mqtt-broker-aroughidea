@@ -263,6 +263,7 @@ journalctl -u mqtt-cert-renew.service -n 100 --no-pager
 - [ ] Let's Encrypt cert issued for production hostname.
 - [ ] `docker-compose.yml` mounts cert location read-only.
 - [ ] `mosquitto.conf` uses CA-trusted cert/key paths.
+- [ ] Pre-flight check passes: `./scripts/preflight-check.sh` exits 0 before broker start.
 - [ ] Renewal + reload automation in place.
 - [ ] `wss://` browser test passes without trust bypass.
 - [ ] `8883` MQTTS smoke test passes.
