@@ -25,6 +25,28 @@ cleanup() {
 
 trap cleanup EXIT
 
+publish_with_retry() {
+  max_attempts=5
+  attempt=1
+
+  while [ "$attempt" -le "$max_attempts" ]; do
+    if docker run --rm --network host \
+      -v "$CA_FILE:/certs/ca.crt:ro" \
+      eclipse-mosquitto:2 \
+      mosquitto_pub -L "wss://$USER_NAME:$PASSWORD@$HOST:$PORT/$TOPIC" --cafile /certs/ca.crt -m "$MESSAGE"; then
+      return 0
+    fi
+
+    if [ "$attempt" -lt "$max_attempts" ]; then
+      echo "   Publish attempt $attempt/$max_attempts failed, retrying..."
+      sleep 1
+    fi
+    attempt=$((attempt + 1))
+  done
+
+  return 1
+}
+
 if [ ! -f "$CA_FILE" ]; then
   echo "❌ FAILURE: CA file not found at: $CA_FILE"
   echo "   Generate certs first: ./scripts/generate-certs.sh"
@@ -52,13 +74,21 @@ docker run --name "$SUB_NAME" --rm -d --network host \
   eclipse-mosquitto:2 \
   mosquitto_sub -L "wss://$USER_NAME:$PASSWORD@$HOST:$PORT/$TOPIC" --cafile /certs/ca.crt -v > /dev/null
 
+if ! docker ps --format '{{.Names}}' | grep -qx "$SUB_NAME"; then
+  echo "❌ FAILURE: WSS subscriber failed to start."
+  docker logs "$SUB_NAME" 2>&1 || true
+  exit 1
+fi
+
 sleep 2
 
 echo "[3/4] Publishing authenticated WSS message '$MESSAGE'..."
-docker run --rm --network host \
-  -v "$CA_FILE:/certs/ca.crt:ro" \
-  eclipse-mosquitto:2 \
-  mosquitto_pub -L "wss://$USER_NAME:$PASSWORD@$HOST:$PORT/$TOPIC" --cafile /certs/ca.crt -m "$MESSAGE"
+if ! publish_with_retry; then
+  echo "❌ FAILURE: WSS publish failed after retries."
+  echo "   Broker logs:"
+  docker logs mosquitto 2>&1 | tail -n 50 || true
+  exit 1
+fi
 
 sleep 1
 
@@ -67,6 +97,8 @@ if docker logs "$SUB_NAME" 2>&1 | grep -q "$MESSAGE"; then
   echo "✅ SUCCESS: WSS publish/subscribe works with TLS + auth"
 else
   echo "❌ FAILURE: Message not received over WSS"
+  echo "   Subscriber logs:"
+  docker logs "$SUB_NAME" 2>&1 | tail -n 50 || true
   echo "   Check broker logs: docker logs -f mosquitto"
   exit 1
 fi
