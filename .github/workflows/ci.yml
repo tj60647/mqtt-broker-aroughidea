@@ -49,10 +49,9 @@ jobs:
       - name: Create test password file (non-interactive)
         run: |
           docker run --rm \
-            --user 1883:1883 \
             -v "$PWD/config:/mosquitto/config" \
             eclipse-mosquitto:2 \
-            mosquitto_passwd -b -c /mosquitto/config/passwords workshop-user ci-test-password
+            sh -c 'mosquitto_passwd -b -c /mosquitto/config/passwords workshop-user ci-test-password && chmod 644 /mosquitto/config/passwords'
 
       - name: Start broker
         run: docker compose up -d
