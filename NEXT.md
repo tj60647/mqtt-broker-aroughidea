@@ -1,6 +1,6 @@
 # Next
 
-Updated: 2026-11-22
+Updated: 2026-11-26
 
 ## Where it stands
 
@@ -22,3 +22,4 @@ Look at closed pull request #12 ("docs: align guides with current project state"
 
 - Is a broker running now, and for which workshop?
 - This plan was drafted by Claude on 2026-11-22 from the code and its history. Is the next step right?
+- A direction to consider (noted from the Project Register, 2026-11-26): an MCP server, so Claude and other agents can publish to and listen on the broker's topics, so an agent can talk to devices (with LingoLink and the IoT Agents project's platformio-mcp). The register's own server is a template: the owner's sign-in through WorkOS, read-only first, every answer saying when it was read. Not decided.
